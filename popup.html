@@ -13,7 +13,7 @@
 		.exportcsvdiv a{
 			color:#ffffff;
 		}
-		.
+		
     </style>
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://fonts.googleapis.com/css?family=Tomorrow|Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -61,6 +61,12 @@
 
     <div class="stats-area" v-if="total_size_optimized !== ''">
         <div class="info info-grid">
+            <div class="sublabel">
+                <span> Image Compression:</span>
+            </div>
+            <div class="amount">
+                <span>{{image_compression}}</span>
+                </div>
             <div class="sublabel">
                 <span>Total optimized:</span>
             </div>

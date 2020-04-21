@@ -5,7 +5,10 @@ let vue_data = {
   "bad_images": [],
   "shim": "optimized",
   "total_size_optimized": "",
-  "total_size_unoptimized": ""
+  "total_size_unoptimized": "",
+  "image_compression":"",
+  "total_original":"",
+
 };
 
 
@@ -76,6 +79,7 @@ function summarizeImagesModel(images_summary_input)
 
   vue_data["total_size_optimized"] = numberWithSpaces(total_optimized_size);
   vue_data["total_size_unoptimized"] = numberWithSpaces(total_unoptimized_size);
+  vue_data["image_compression"]=imageCompression(total_optimized_size,total_unoptimized_size)+'%'
 }
 
 
@@ -84,7 +88,12 @@ function numberWithSpaces(x) {
   let val = x_str.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   return val;
 }
+function imageCompression(total_optimized,total_original)
+{
+  let result = (total_original-total_optimized)/total_original
+  return String(result)
 
+}
 function restoreData(vue_data)
 {
   let resultP = new Promise((resolve, reject) => {
