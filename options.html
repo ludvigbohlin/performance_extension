@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        button {
+            height: 30px;
+            width: 30px;
+            outline: none;
+        }
+    </style>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css?family=Tomorrow&display=swap" rel="stylesheet">
+    <script src="js/vue.js"></script>
+    <title>ShimmerCat Images Performance AddOn</title>
+</head>
+<body>
+
+<div class="title-block">
+    <h1><img alt="logo"
+             class="logo"
+             src="icons/icon_128x128.png"
+             width="20px"
+             height="auto">ShimmerCat Bad Compression AddOn</h1>
+</div>
+<hr class="divider">
+
+<div id="app-root">
+
+    <div>
+        <h2>Upload and download data</h2>
+    </div>
+
+    <div class="info">
+        <div>
+            <span>Current view: {{ shim }}</span>
+        </div>
+        <div class="counters">
+            <p>Good images: <span class="counter good">{{ good_images.length }}</span></p>
+            <p>Bad images: <span class="counter bad">{{ bad_images.length }}</span></p>
+        </div>
+    </div>
+
+</div>
+</body>
+<script src="js/browser_polyfill.js"></script>
+<script src="js/popup.js"></script>
+</html>

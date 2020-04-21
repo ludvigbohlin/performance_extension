@@ -1,0 +1,53 @@
+{
+   "name": "ShimmerCat Images Performance AddOn",
+   "version": "0.1",
+   "description": "In-page statistics about image optimization",
+   "manifest_version": 2,
+
+   "permissions": [
+      "storage",
+      "declarativeContent",
+      "activeTab",
+      "contextMenus",
+      "downloads"
+    ],
+
+    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+
+    "page_action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "128": "icons/icon_128x128.png"
+      }
+    },
+
+    "background": {
+      "scripts": [
+        "js/lodash.js",
+        "js/browser_polyfill.js",
+        "js/background.js"
+      ],
+      "persistent": false
+    },
+
+    "options_page": "options.html",
+
+    "icons": {
+      "128": "icons/icon_128x128.png",
+      "48": "icons/icon_48x48.png"
+    },
+
+    "content_scripts": [
+      {
+        "matches": ["https://*/*"],
+        "js": [
+          "js/lodash.js",
+		   "js/find_domain_name.js",
+          "js/browser_polyfill.js",
+          "content-js/state.js"
+        ],
+        "css": ["css/content_special.css"]
+      }
+    ]
+
+ }

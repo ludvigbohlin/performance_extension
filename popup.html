@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        button {
+            height: 30px;
+            width: 30px;
+            outline: none;
+        }
+		.exportcsvdiv{
+			text-align:center;
+		}
+		.exportcsvdiv a{
+			color:#ffffff;
+		}
+		.
+    </style>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css?family=Tomorrow|Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="js/vue.js"></script>
+</head>
+<body>
+<div class="title-block">
+    <header>
+        <img alt="logo" class="logo" src="icons/icon_128x128.png" width="20px" height="20px">
+        <h1>ShimmerCat Images Performance AddOn</h1>
+    </header>
+</div>
+
+<hr class="divider">
+
+<div id="app-root">
+
+    <div class="radiobutton-area">
+        <div>
+            <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized"
+                   checked v-model="shim"
+            >
+            <label for="optimized">View optimized</label>
+        </div>
+        <div>
+            <input class="shim-radio" type="radio" id="unoptimized" name="shim-type" value="unoptimized"
+                   v-model="shim"
+            >
+            <label for="unoptimized">View <b>non</b>-optimized</label>
+        </div>
+        <div>
+            <input class="shim-radio" type="radio" id="select" name="shim-type" value="select"
+                   v-model="shim"
+            >
+            <label for="select">View selection</label>
+        </div>
+        <div class="info">
+            <div>
+                <span>Current view: {{ shim }}</span>
+            </div>
+        </div>
+    </div>
+
+    <hr class="subdivider">
+
+    <div class="stats-area" v-if="total_size_optimized !== ''">
+        <div class="info info-grid">
+            <div class="sublabel">
+                <span>Total optimized:</span>
+            </div>
+            <div class="amount">
+                <span>{{total_size_optimized}}</span>
+            </div>
+            <div class="sublabel">
+                <span>Total original:</span>
+            </div>
+            <div class="amount">
+                <span>{{total_size_unoptimized}}</span>
+            </div>
+        </div>
+		<div class="exportcsvdiv"><a href="download.html">Export to CSV</a></div>
+    </div>
+
+</div>
+
+
+</body>
+<script src="js/browser_polyfill.js"></script>
+<script src="js/popup.js"></script>
+</html>
