@@ -5,7 +5,7 @@ let currentView = null;
 
 
 function* iterateOnImages() {
-    let images = document.querySelectorAll('div.enhanced-page-tiles__top-image, img,div.big-banner__container');
+    let images = document.querySelectorAll('*');
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
@@ -135,7 +135,7 @@ function removeCustomStyles(im_element) {
 
 function changeToOptimized() {
     currentView = 'optimized';
-    let images = document.querySelectorAll('img ,div.enhanced-page-tiles__top-image,div.big-banner__container');
+    let images = document.querySelectorAll('*');
     images.forEach((im) => {
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
@@ -174,7 +174,7 @@ function retrieving(url) {
     else {
         console.log(`Before placing ${typeof(url)}`)
         console.log(`The length = ${url.length}`)
-        url = 'https://tools.se' + url.replace(/^url\(['"](.+)['"]\)/, '$1');
+        url = "https://"+document.location.hostname+ url.replace(/^url\(['"](.+)['"]\)/, '$1');
         console.log(`from retriving funciton ${url}`)
         return url;
     }
@@ -383,7 +383,7 @@ function originalURLOfImage(im) {
 
 function changeToUnoptimized() {
     currentView = "unoptimized";
-    let images = document.querySelectorAll("img");
+    let images = document.querySelectorAll("*");
     images.forEach((im) => {
         const from_url = im.currentSrc;
 
