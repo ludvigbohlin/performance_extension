@@ -135,7 +135,7 @@ function removeCustomStyles(im_element) {
 
 function changeToOptimized() {
     currentView = 'optimized';
-    let images = document.querySelectorAll('*');
+    let images = document.querySelectorAll('*,img.lazyloaded');
     images.forEach((im) => {
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
@@ -397,7 +397,7 @@ function originalURLOfImage(im) {
 
 function changeToUnoptimized() {
     currentView = "unoptimized";
-    let images = document.querySelectorAll("*");
+    let images = document.querySelectorAll("*,img.lazyloaded");
     images.forEach((im) => {
         const from_url = im.currentSrc;
 
