@@ -15,7 +15,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         actions: [new browser.declarativeContent.ShowPageAction()]
       }]);
   });
-
+  sendResponse({ status: "Welcome to ShimmerCat AB" });
 
 });
 const ANALYZED_DOMAIN = 'https://tools.se';
