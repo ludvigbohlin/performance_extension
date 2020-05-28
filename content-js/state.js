@@ -9,7 +9,7 @@ function* iterateOnImages() {
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
-            console.log(` This is the url ${url}`);
+            //console.log(` This is the url ${url}`);
             let doc_hostname = document.location.hostname;
             if (url.hostname === doc_hostname) {
                 yield [im, url];
@@ -166,12 +166,13 @@ function changeToOptimized() {
 
 function retrieving(url) {
     if (url == null || url == undefined || url.length == 0) {
-        console.log("Url is found null")
-        console.log(url)
+        //console.log("Url is found null")
+        //console.log(url)
         return false;
 
     }
     else {
+        console.log(url)
         console.log(`Before placing ${typeof (url)}`)
         console.log(`The length = ${url.length}`)
         url = "https://" + document.location.hostname + url.replace(/^url\(['"](.+)['"]\)/, '$1');
@@ -188,8 +189,14 @@ function retrieving(url) {
 
             return url;
         }
+        else if (/.jpg\\?preset|.png\\?preset|.gif\\?preset/.test(url)) {
+            console.log("Checked via jpg")
+            console.log(url)
+            return url;
+        }
         else {
-            return false
+            console.log("The issue is ")
+            console.log(url)
         }
 
     }
