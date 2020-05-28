@@ -5,7 +5,7 @@ let currentView = null;
 
 
 function* iterateOnImages() {
-    let images = document.querySelectorAll('*');
+    let images = document.querySelectorAll('*,img.lazyloaded');
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
@@ -135,7 +135,7 @@ function removeCustomStyles(im_element) {
 
 function changeToOptimized() {
     currentView = 'optimized';
-    let images = document.querySelectorAll('*');
+    let images = document.querySelectorAll('*,img.lazyloaded');
     images.forEach((im) => {
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
@@ -165,20 +165,34 @@ function changeToOptimized() {
 }
 
 function retrieving(url) {
-    if (url == null || url == undefined|| url.length == 0 ){
+    if (url == null || url == undefined || url.length == 0) {
         console.log("Url is found null")
         console.log(url)
         return false;
 
     }
     else {
-        console.log(`Before placing ${typeof(url)}`)
+        console.log(`Before placing ${typeof (url)}`)
         console.log(`The length = ${url.length}`)
-        url = "https://"+document.location.hostname+ url.replace(/^url\(['"](.+)['"]\)/, '$1');
-        console.log(`from retriving funciton ${url}`)
-        return url;
-    }
+        url = "https://" + document.location.hostname + url.replace(/^url\(['"](.+)['"]\)/, '$1');
+        // PARAMETER FOR IMAGES SELECTION
+        var dotIndex = url.lastIndexOf('.');
+        try { var ext = str.substring(dotIndex); }
+        catch (e) {
+            var ext = ""
+        }
+        let images_extensions = ['.png', '.jpg']
+        if (images_extensions.includes(ext)) {
 
+            console.log(`from retriving funciton ${url}`)
+
+            return url;
+        }
+        else {
+            return false
+        }
+
+    }
 }
 
 function canUseUrl(url) {
@@ -228,11 +242,11 @@ function isWEBPFile(arrayBuffer) {
  * @param {Response} response
  * @returns {?string}
  */
-function 
+function
 
 
 
-image_opt_status_from_headers(response) {
+    image_opt_status_from_headers(response) {
     let headers_status = null;
     for (let
         /** @type String[] */
@@ -251,7 +265,7 @@ image_opt_status_from_headers(response) {
                 headers_status = 'ready'
                 break;
             }
-            else{
+            else {
                 console.log('Open the value')
             }
         }
@@ -283,7 +297,7 @@ function urlPointsToStatus(url) {
     let headers = new Headers({
         "cache-control": "no-cache",
         "accept": "image/webp,image/apng,image/*",
-        "accept-encoding":"gzip, deflate, br",
+        "accept-encoding": "gzip, deflate, br",
     });
 
     let fetch_request = new Request(
@@ -310,8 +324,8 @@ function urlPointsToStatus(url) {
                     //noinspection JSIncompatibleTypesComparison;
                     if (headers_status === null) {
                         resolve([false, indicated_size]);
-                    } else{
-                        resolve([headers_status,indicated_size]);
+                    } else {
+                        resolve([headers_status, indicated_size]);
                     }
                 } else {
                     resolve([null, null]);
@@ -330,7 +344,7 @@ function populateUnoptimizedSizeModel(url) {
     let headers = new Headers({
         "cache-control": "no-cache",
         "accept": "image/jpeg,image/apng,image/*",
-        "accept-encoding":"gzip, deflate, br",
+        "accept-encoding": "gzip, deflate, br",
     });
 
     let fetch_request = new Request(
@@ -383,7 +397,7 @@ function originalURLOfImage(im) {
 
 function changeToUnoptimized() {
     currentView = "unoptimized";
-    let images = document.querySelectorAll("*");
+    let images = document.querySelectorAll("*,img.lazyloaded");
     images.forEach((im) => {
         const from_url = im.currentSrc;
 
