@@ -16,7 +16,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
       }]);
   });
 
-
+  sendResponse({ "status": "Welcome to ShimmerCat Image Extension" })
 });
 const ANALYZED_DOMAIN = 'https://tools.se';
 
