@@ -178,7 +178,7 @@ function retrieving(url) {
         url = "https://" + document.location.hostname + url.replace(/^url\(['"](.+)['"]\)/, '$1');
         // PARAMETER FOR IMAGES SELECTION
         var dotIndex = url.lastIndexOf('.');
-        try { var ext = str.substring(dotIndex); }
+        try { var ext = url.substring(dotIndex); }
         catch (e) {
             var ext = ""
         }
@@ -189,7 +189,7 @@ function retrieving(url) {
 
             return url;
         }
-        else if (/.jpg\\?preset|.png\\?preset|.gif\\?preset/.test(url)) {
+        else if (/.jpg\?preset|.png\?preset|.gif\?preset/.test(url)) {
             console.log("Checked via jpg")
             console.log(url)
             return url;
