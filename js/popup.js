@@ -33,7 +33,7 @@ let vue_data = {
 //   return resultP;
 // }
 
-
+// It will listen the action send from the state js and save it to local storage with key name clog in json file
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (sender.tab && sender.tab.active) {
     console.log("Message from active tab");
@@ -62,6 +62,8 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
  *
  * @param {ImagesSummaryInput} images_summary_input
  */
+/* This  funciton will get the data storage in local storage and does the processing for calcultion and converting into the json file
+*/
 function summarizeImagesModel(images_summary_input) {
   let total_unoptimized_size = 0.0;
   for (let im_url of Object.getOwnPropertyNames(images_summary_input.unoptimized)) {
