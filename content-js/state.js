@@ -1,12 +1,23 @@
-
+/*  Documentation of code Bishal Nepali
+*/
+// 
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
 let currentView = null;
 
-
+/* Generator funciton iterateOnImages:
+The function iterates over the list of all elements matching selectors (*) which means all the elements in our body of html. 
+We have two functions to filter the elements that has the image url
+1. canUseUrl
+2. retrieving
+Once they satified required the function will return html element(im) and javascript url(url) object 
+ */
 function* iterateOnImages() {
+    // returns the list of all elements
     let images = document.querySelectorAll('*,img.lazyloaded');
+    // for loop iteration for all the images
     for (let im of images) {
+        // canUseUrl function is called
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
             //console.log(` This is the url ${url}`);
@@ -29,7 +40,13 @@ function* iterateOnImages() {
 }
 
 
-
+/*
+displaySelected() :
+In this funciton the return element and url  of iterateOnImages will have addition of classes in element and creates the function like h,g,i which has elements of classes like scbca-webp,
+scbca-processing,scbca-non-viable using the functions highlightAs*. and image url is from originalURLOfImage function.
+and according to the header_status the element will be updated with the classe value by calling the function h,g,i
+the optimizedSizeModel varible will be converted into the objects having the url as key and value in objects where status,size value will be provided
+*/
 
 function displaySelected() {
     optimizedSizeModel = {};
@@ -46,9 +63,10 @@ function displaySelected() {
 
         im.currentSrc = use_url_for_highlight;
         im.src = use_url_for_highlight;
-
+        // header_status and content-length is checked.
         urlPointsToStatus(use_url_for_highlight)
             .then(([status, transfer_size]) => {
+                // Removing the class attribute 
                 removeCustomStyles(im);
                 if (status === "ready") {
                     im.classList.remove("scbca-gray");
@@ -62,6 +80,7 @@ function displaySelected() {
                 } else {
                     im.classList.add("scbca-gray");
                 }
+                // optimizedSizeModel with url as key will have the value of status and size
                 if (transfer_size !== null) {
                     optimizedSizeModel[use_url_for_highlight] = {
                         'status': status,
@@ -72,6 +91,10 @@ function displaySelected() {
     }
 }
 
+/* This function will call the displaySeletected and refresh as 
+ sets a timer which executes a function again after 15 seconds and 
+send the summaries again afer 3 seconds
+*/
 
 function refreshSelectedView() {
     if (currentView === "selected") {
@@ -81,7 +104,10 @@ function refreshSelectedView() {
     }
 }
 
-
+/*
+displaySelected function is called wnd currenView is change to slected  if current view is not selected
+ 
+*/
 function changeToSelected() {
     if (currentView !== "selected") {
         window.setTimeout(sendModelSummaries, 3000);
@@ -91,7 +117,7 @@ function changeToSelected() {
     displaySelected();
 }
 
-
+// This function will send the message from content script to which this to the pop script which is popup script
 function sendModelSummaries() {
     browser.runtime.sendMessage({
         'kind': 'model-summary',
@@ -103,22 +129,24 @@ function sendModelSummaries() {
     );
 }
 
-
+// This function will add the scbca-webp in class attribute
 function highlightAsWebp(im_element) {
     im_element.classList.add("scbca-webp");
 }
 
-
+// This function will add the scbca-processing in class attribute
 function highlightAsProcessing(im_element) {
     im_element.classList.add("scbca-processing");
 }
 
-
+//This function will add the scbca-non-viable in class attribute
 function highlightAsNonViable(im_element) {
     im_element.classList.add("scbca-non-viable");
 }
 
-
+/*
+This function removes the classe attribute of the element which are present beforebundleRenderer.renderToStream
+return the image with removal of mention classes */
 function removeCustomStyles(im_element) {
     const tokens = [
         "scbca-gray",
@@ -132,7 +160,7 @@ function removeCustomStyles(im_element) {
     }
 }
 
-
+// This function will also iterate with images.
 function changeToOptimized() {
     currentView = 'optimized';
     let images = document.querySelectorAll('*,img.lazyloaded');
@@ -164,6 +192,11 @@ function changeToOptimized() {
     });
 }
 
+/*
+retrieving(url):
+It will look for the url in the images which has regular currentscr and return the url by doing some extra work to
+return the img url.
+*/
 function retrieving(url) {
     if (url == null || url == undefined || url.length == 0) {
         //console.log("Url is found null")
@@ -252,7 +285,9 @@ function isWEBPFile(arrayBuffer) {
 function
 
 
-
+    /* This function checks the header_name if header_value is sc-note
+     header_value if it includes webp0 as nv,ip,re it will return the header status like non-viable,in-processing,ready 
+     */
     image_opt_status_from_headers(response) {
     let headers_status = null;
     for (let
@@ -285,6 +320,10 @@ function
  * @param {Response} response
  * @returns {?number}
  */
+/* 
+This function
+It will return Integer value for content-lenght of the image or null
+*/
 function size_from_headers(response) {
     let result = null;
     for (let
@@ -299,6 +338,12 @@ function size_from_headers(response) {
     return result;
 }
 
+/*
+urlPointsToStatus(url):
+This function will make the  fetch request of the url(image url ) and retrieve the resonse with resultP which has two data
+1. header_status - non-viable,in-processing,ready accordily, false ,null,
+2. indicated_size - can be numeric value or null
+*/
 
 function urlPointsToStatus(url) {
     let headers = new Headers({
@@ -317,16 +362,19 @@ function urlPointsToStatus(url) {
         });
 
     let prom = fetch(fetch_request);
-
+    // Return the header_status like non-viable,in-processing,ready accordily or false or null and content-size or null
     let resultP = new Promise((resolve, reject) => {
         prom.then(
             (response) => {
+                // If the response is okay
                 if (response.status === 200) {
-                    console.log("This is the response of header")
-                    console.log(response.headers);
+                    // console.log("This is the response of header")
+                    // console.log(response.headers);
+                    // it will return the header status like non-viable,in-processing,ready accordily
                     let headers_status = image_opt_status_from_headers(response);
+                    //Content-length size of header is return
                     let indicated_size = size_from_headers(response);
-                    console.log(`The header status ${headers_status} and ${indicated_size}`)
+                    //console.log(`The header status ${headers_status} and ${indicated_size}`)
                     //optimizedSizeModel[captured_url] = indicated_size;
                     //noinspection JSIncompatibleTypesComparison;
                     if (headers_status === null) {
