@@ -2,7 +2,7 @@
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
 let currentView = null;
-
+let Active = false;
 
 function* iterateOnImages() {
     let images = document.querySelectorAll('*,img.lazyloaded');
@@ -96,7 +96,8 @@ function sendModelSummaries() {
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
-        'optimized': optimizedSizeModel
+        'optimized': optimizedSizeModel,
+        'active':Active
     }).then(
         () => { },
         () => { },
@@ -259,9 +260,11 @@ function
         /** @type String[] */
         header_val_arr of response.headers.entries()) {
         let [header_name, header_value] = header_val_arr;
-        console.log(`The header value ${header_name} and ${header_value}`)
-        if (header_name === "sc-note") {
+        //console.log(`The header value ${header_name} and ${header_value}`)
 
+        if (header_name === "sc-note") {
+            Active=true;
+            console.log("agya");
             if (header_value.includes("webp0=nv")) {
                 headers_status = 'non-viable';
                 break;
@@ -276,7 +279,10 @@ function
                 console.log('Open the value')
             }
         }
+        
     }
+    
+    
     return headers_status;
 }
 
@@ -330,8 +336,10 @@ function urlPointsToStatus(url) {
                     //optimizedSizeModel[captured_url] = indicated_size;
                     //noinspection JSIncompatibleTypesComparison;
                     if (headers_status === null) {
+                        
                         resolve([false, indicated_size]);
                     } else {
+                        
                         resolve([headers_status, indicated_size]);
                     }
                 } else {

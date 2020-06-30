@@ -1,117 +1,135 @@
 body {
-  background-color: #310e0e;
-  width: 290px;
-  font-family: "Tomorrow", sans-serif;
-  margin: 0;
-  color: #eaecc8;
-  font-size: 14px;
+    background-color: #310e0e;
+    width: 290px;
+    height: 330px !important;
+    font-family: "Tomorrow", sans-serif;
+    margin: 0;
+    color: #eaecc8;
+    font-size: 14px;
+}
+
+.ErrorMessage {
+    padding: 14px;
+    vertical-align: middle;
+    position: relative;
+    top: 80px;
+    font-size: 13px;
+    font-weight: bold;
 }
 
 .title-block {
-  padding: 16px;
+    padding: 16px;
 }
-.title-block > header {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-      -ms-flex-direction: column;
-          flex-direction: column;
-  -webkit-box-align: center;
-      -ms-flex-align: center;
-          align-items: center;
+
+.title-block>header {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
 }
 
 .checkbox-area {
-  padding: 16px;
+    padding: 16px;
 }
 
 .radiobutton-area {
-  padding: 16px;
+    padding: 16px;
 }
 
 h1 {
-  font-size: 12px;
-  font-weight: bolder;
+    font-size: 12px;
+    font-weight: bolder;
 }
 
 .logo {
-  display: block;
+    display: block;
 }
 
-.divider, .subdivider {
-  display: block;
-  border-bottom: #e0e0e040 solid 1px;
-  color: #dacdff6e;
+.divider,
+.subdivider {
+    display: block;
+    border-bottom: #e0e0e040 solid 1px;
+    color: #dacdff6e;
 }
 
 .shim-radio {
-  margin-top: 16px;
-  margin-bottom: 16px;
+    margin-top: 16px;
+    margin-bottom: 16px;
 }
 
 .counters {
-  padding: 16px;
+    padding: 16px;
 }
+
 .counters .counter {
-  font-size: 16px;
-  padding-left: 16px;
-  padding-right: 16px;
-  line-height: 2em;
+    font-size: 16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    line-height: 2em;
 }
+
 .counters .good {
-  color: #10a010;
+    color: #10a010;
 }
+
 .counters .bad {
-  color: #a01010;
+    color: #a01010;
 }
 
 .info {
-  padding: 16px;
+    padding: 16px;
 }
 
 .dire-warning {
-  font-size: 12px;
+    font-size: 12px;
 }
 
 .files button {
-  width: 100px;
+    width: 100px;
 }
 
 .files {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-pack: justify;
-      -ms-flex-pack: justify;
-          justify-content: space-between;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-pack: justify;
+    -ms-flex-pack: justify;
+    justify-content: space-between;
 }
 
 .info-grid {
-  display: -ms-grid;
-  display: grid;
+    display: -ms-grid;
+    display: grid;
 }
+
 .info-grid div {
-  padding-top: 4px;
-  padding-bottom: 4px;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
+
 .info-grid .sublabel {
-  -ms-grid-column: 1;
-      grid-column-start: 1;
-  -ms-grid-column-span: 1;
-  grid-column-end: span 1;
-  -ms-grid-row: auto;
-      grid-row-start: auto;
+    -ms-grid-column: 1;
+    grid-column-start: 1;
+    -ms-grid-column-span: 1;
+    grid-column-end: span 1;
+    -ms-grid-row: auto;
+    grid-row-start: auto;
 }
+
 .info-grid .amount {
-  font-family: "Share Tech Mono", monospace;
-  -ms-grid-column: 2;
-      grid-column-start: 2;
-  -ms-grid-column-span: 1;
-  grid-column-end: span 1;
-  -ms-grid-row: auto;
-      grid-row-start: auto;
-  text-align: right;
-  font-size: 16px;
+    font-family: "Share Tech Mono", monospace;
+    -ms-grid-column: 2;
+    grid-column-start: 2;
+    -ms-grid-column-span: 1;
+    grid-column-end: span 1;
+    -ms-grid-row: auto;
+    grid-row-start: auto;
+    text-align: right;
+    font-size: 16px;
 }

@@ -30,8 +30,12 @@
 <hr class="divider">
 
 <div id="app-root">
-
-    <div class="radiobutton-area">
+    <div v-if="!Active">
+          <label class="ErrorMessage">
+              The Website is not served by ShimmerCat.
+          </label>
+    </div>
+    <div class="radiobutton-area" v-if="Active">
         <div>
             <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized"
                    checked v-model="shim"
@@ -57,9 +61,9 @@
         </div>
     </div>
 
-    <hr class="subdivider">
+    <hr class="subdivider"v-if="Active">
 
-    <div class="stats-area" v-if="total_size_optimized !== ''">
+    <div class="stats-area" v-if="total_size_optimized !== '' && Active">
         <div class="info info-grid">
             <div class="sublabel">
                 <span> Image Compression:</span>
