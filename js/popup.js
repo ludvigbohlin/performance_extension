@@ -6,7 +6,7 @@ let vue_data = {
     "total_size_unoptimized": "",
     "image_compression": "",
     "total_original": "",
-    "Active": false
+    "Active": true
 };
 
 
@@ -37,9 +37,8 @@ browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (sender.tab && sender.tab.active) {
         console.log("Message from active tab");
         localStorage.setItem('clog', JSON.stringify(request));
-        if(request.active===true){
-          vue_data["Active"] = true;
-          console.log(vue_data);
+        if(request.active===false){
+          vue_data["Active"] = false;
         }
         summarizeImagesModel(request);
     }
