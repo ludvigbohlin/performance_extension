@@ -1,15 +1,17 @@
 body {
-    background-color: #310e0e;
-    width: 290px;
-    height: 330px !important;
-    font-family: "Tomorrow", sans-serif;
+    background-color: white;
+    width: 350px;
+    height: 550px !important;
+    font-family: sans-serif;
     margin: 0;
-    color: #eaecc8;
+    color: black;
     font-size: 14px;
 }
-.Message{
-  text-align: center;
+
+.Message {
+    text-align: center;
 }
+
 .ErrorMessage {
     padding: 14px;
     vertical-align: middle;
@@ -21,6 +23,13 @@ body {
 
 .title-block {
     padding: 16px;
+}
+
+.version {
+    position: absolute;
+    right: 5px;
+    top: 3px;
+    font-size: 10px;
 }
 
 .title-block>header {
@@ -41,16 +50,19 @@ body {
 }
 
 .radiobutton-area {
-    padding: 16px;
+    padding: 0px 25px;
 }
 
 h1 {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bolder;
+    margin-top: 20px;
 }
 
 .logo {
     display: block;
+    height: 35px;
+    width: 35px;
 }
 
 .divider,
@@ -82,10 +94,6 @@ h1 {
 
 .counters .bad {
     color: #a01010;
-}
-
-.info {
-    padding: 16px;
 }
 
 .dire-warning {
@@ -134,4 +142,136 @@ h1 {
     grid-row-start: auto;
     text-align: right;
     font-size: 16px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.m-25 {
+    margin: 50px 0px;
+}
+
+.f-size {
+    font-size: 15px;
+}
+
+.btn {
+    text-decoration: none;
+    color: #ffffff;
+    border: 1px solid whitesmoke;
+    border-radius: 5px;
+    padding: 10px 25px;
+    background: darkslategrey;
+    position: relative;
+    top: 5px;
+}
+
+.btn:hover {
+    color: #ffffff;
+    background: #293c3c9c;
+}
+
+.p-position {
+    margin: 0px;
+    position: absolute;
+    left: 80px;
+}
+
+.r-position {
+    position: absolute;
+    left: 55px;
+    cursor: pointer;
+}
+
+.t-1 {
+    top: 125px;
+}
+
+.t-2 {
+    top: 150px;
+}
+
+.t-3 {
+    top: 175px;
+}
+
+.text-ul-li {
+    font-size: 12px;
+    position: relative;
+    top: 90%;
+    left: 60px;
+}
+
+.list-ul {
+    list-style-type: none;
+    padding-left: 4px;
+    position: relative;
+    bottom: 10px;
+}
+
+ul li::before {
+    content: '*';
+    position: relative;
+    right: 5px;
+    top: 3px;
+}
+
+.label-align {
+    position: relative;
+    top: 105%;
+    border: 5px solid black;
+    box-shadow: inset 1px 1px 5px 0px black;
+    border-radius: 10px;
+    left: 25px;
+    width: 75%;
+    padding: 15px;
+    font-size: 13px;
+}
+
+.div-1 {
+    position: relative;
+    top: 2px;
+    left: 5px;
+    display: inline-block;
+    width: 120px;
+}
+
+.div-2 {
+    position: relative;
+    right: 50px;
+    display: inline-block;
+    width: 125px;
+}
+
+.div-3 {
+    position: relative;
+    left: 4px;
+    display: inline-block;
+    width: 120px;
+}
+
+.div-4 {
+    position: relative;
+    right: 50px;
+    display: inline-block;
+    width: 125px;
+}
+
+.div-5 {
+    position: relative;
+    left: 4px;
+    display: inline-block;
+    width: 120px;
+}
+
+.div-6 {
+    position: relative;
+    right: 50px;
+    display: inline-block;
+    width: 125px;
+}
+
+.btn-top {
+    top: 119px;
 }

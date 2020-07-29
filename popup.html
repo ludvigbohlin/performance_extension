@@ -8,11 +8,11 @@
             width: 30px;
             outline: none;
         }
-
+        
         .exportcsvdiv {
             text-align: center;
         }
-
+        
         .exportcsvdiv a {
             color: #ffffff;
         }
@@ -25,72 +25,96 @@
 <body>
     <div class="title-block">
         <header>
-            <img alt="logo" class="logo" src="icons/icon_128x128.png" width="20px" height="20px">
+            <span class="version">v.01</span>
+            <img alt="logo" class="logo" src="icons/icon_128x128.png">
             <h1>ShimmerCat Image Extension</h1>
         </header>
     </div>
 
-    <hr class="divider">
-
     <div id="app-root">
-        <div v-if="ServiceWorker==true" class="Message">
+        <div v-if="ServiceWorker==true&&SplashScreen==false" class="Message">
             <label class="ErrorMessage">
                 This website uses ShimmerCat Service Worker.
             </label>
         </div>
-        <div v-if="!Active && !ServiceWorker" class="Message">
+        <div v-if="!Active && !ServiceWorker&&SplashScreen==false" class="Message">
             <label class="ErrorMessage">
                 This Website is not served by ShimmerCat.
             </label>
         </div>
-        <div class="radiobutton-area" v-if="Active && !ServiceWorker">
-            <div>
-                <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized" checked
-                    v-model="shim">
-                <label for="optimized">View optimized</label>
+        <div class="radiobutton-area" v-if="Active && !ServiceWorker &&SplashScreen==false">
+            <p class="p-position">Show</p>
+            <div class="r-position t-1">
+                <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized" checked v-model="shim">
+                <label for="optimized">Optimized images</label>
             </div>
-            <div>
-                <input class="shim-radio" type="radio" id="unoptimized" name="shim-type" value="unoptimized"
-                    v-model="shim">
-                <label for="unoptimized">View <b>non</b>-optimized</label>
+            <div class="r-position t-2">
+                <input class="shim-radio" type="radio" id="unoptimized" name="shim-type" value="unoptimized" v-model="shim">
+                <label for="unoptimized">Original images</label>
             </div>
-            <div>
+            <div class="r-position t-3">
                 <input class="shim-radio" type="radio" id="select" name="shim-type" value="select" v-model="shim">
-                <label for="select">View selection</label>
-            </div>
-            <div class="info">
-                <div>
-                    <span>Current view: {{ shim }}</span>
-                </div>
+                <label for="select">Selection</label>
             </div>
         </div>
 
-        <hr class="subdivider" v-if="Active">
+        <div v-if="Active &&SplashScreen==false">
 
-        <div class="stats-area" v-if="total_size_optimized !== '' && Active">
-            <div class="info info-grid">
-                <div class="sublabel">
-                    <span> Image Compression:</span>
+            <div class="stats-area" v-if="total_size_optimized !== '' && Active">
+                <div class="info info-grid">
+                    <div class="text-ul-li">
+                        <span>
+                    When you show "Selection", images are dis-
+                    <br>played as:
+                </span>
+                        <ul class="list-ul">
+                            <li>Sepia images: optimized</li>
+                            <li>Inverted images: Not possible to both
+                                <br>compress and keep quality
+                            </li>
+                            <li>Pulsating images: Image is being pro-
+                                <br>cessed
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="label-align">
+                        <div class="sublabel div-1">
+                            <span> Image Compression:</span>
+                        </div>
+                        <div class="amount div-2">
+                            <span>{{image_compression}}</span>
+                        </div>
+                        <div class="sublabel div-3">
+                            <span>Total optimized:</span>
+                        </div>
+                        <div class="amount div-4">
+                            <span>{{total_size_optimized}}</span>
+                        </div>
+                        <div class="sublabel div-5">
+                            <span>Total original:</span>
+                        </div>
+                        <div class="amount div-6">
+                            <span>{{total_size_unoptimized}}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="amount">
-                    <span>{{image_compression}}</span>
-                </div>
-                <div class="sublabel">
-                    <span>Total optimized:</span>
-                </div>
-                <div class="amount">
-                    <span>{{total_size_optimized}}</span>
-                </div>
-                <div class="sublabel">
-                    <span>Total original:</span>
-                </div>
-                <div class="amount">
-                    <span>{{total_size_unoptimized}}</span>
-                </div>
+                <div class="exportcsvdiv"><a href="download.html" class="btn btn-top">Export to CSV</a></div>
             </div>
-            <div class="exportcsvdiv"><a href="download.html">Export to CSV</a></div>
         </div>
-
+        <div class="text-center" v-if="SplashScreen==true">
+            <p class="m-25 f-size">
+                Visualize and check the effects of
+                <br>ShimmerCat's image optimization
+                <br>compared to the origin.
+            </p>
+            <p class="m-25 f-size">
+                Just click the below button,
+                <br>the check only takes a few seconds
+            </p>
+            <div>
+                <a href="#" v-on:click="SplashScreenChange" class="btn">Find optimized images</a>
+            </div>
+        </div>
     </div>
 
 
