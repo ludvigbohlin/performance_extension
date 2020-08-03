@@ -25,12 +25,11 @@
 <body>
     <div class="title-block">
         <header>
-            <span class="version">v.01</span>
+            <span class="version">v0.2</span>
             <img alt="logo" class="logo" src="icons/icon_128x128.png">
             <h1>ShimmerCat Image Extension</h1>
         </header>
     </div>
-
     <div id="app-root">
         <div v-if="ServiceWorker==true&&SplashScreen==false" class="Message">
             <label class="ErrorMessage">
@@ -57,7 +56,9 @@
                 <label for="select">Selection</label>
             </div>
         </div>
-
+        <div v-if="Spinner">
+            <img class="spinner" src="/icons/spinner.svg" alt="Girl in a jacket" width="500" height="600">
+        </div>
         <div v-if="Active &&SplashScreen==false">
 
             <div class="stats-area" v-if="total_size_optimized !== '' && Active">

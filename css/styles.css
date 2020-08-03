@@ -11,7 +11,12 @@ body {
 .Message {
     text-align: center;
 }
-
+.spinner{
+    width: 200px;
+    height: 200px;
+    margin-top: 17%;
+    margin-left: 21%;
+}
 .ErrorMessage {
     padding: 14px;
     vertical-align: middle;

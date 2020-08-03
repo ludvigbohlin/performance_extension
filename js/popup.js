@@ -8,7 +8,8 @@ let vue_data = {
     "total_original": "",
     "Active": true,
     "ServiceWorker": false,
-    "SplashScreen":true
+    "SplashScreen":true,
+    "Spinner":false
 };
 
 
@@ -41,12 +42,16 @@ browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         localStorage.setItem('clog', JSON.stringify(request));
         if (request.active === false) {
             vue_data["Active"] = false;
+
         }
 
         vue_data["ServiceWorker"] = request.serviceWorker;
 
 
         summarizeImagesModel(request);
+            
+        vue_data["Spinner"] = false;
+
     }
     console.log("From popup: ", sender, request);
 });
@@ -84,8 +89,8 @@ function summarizeImagesModel(images_summary_input) {
         total_optimized_size += images_summary_input.optimized[im_url].transfer_size;
     }
 
-    vue_data["total_size_optimized"] = numberWithSpaces(total_optimized_size);
-    vue_data["total_size_unoptimized"] = numberWithSpaces(total_unoptimized_size);
+    vue_data["total_size_optimized"] = numberWithSpaces(formatBytes(total_optimized_size));
+    vue_data["total_size_unoptimized"] = numberWithSpaces(formatBytes(total_unoptimized_size));
     vue_data["image_compression"] = imageCompression(total_optimized_size, total_unoptimized_size) + '%';
 
 }
@@ -118,7 +123,17 @@ function restoreData(vue_data) {
     return resultP;
 
 }
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
 
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 
 window.vue_body_app = new Vue({
     data: vue_data,
@@ -145,8 +160,10 @@ window.vue_body_app = new Vue({
             });
         },
         SplashScreenChange:function(){
-            console.log("splash clicked");
+         
             vue_data["SplashScreen"]=false;
+            vue_data["Spinner"]=true;
+
         }
     },
 
