@@ -1,15 +1,16 @@
 let vue_data = {
     "good_images": [],
     "bad_images": [],
-    "shim": "optimized",
+    "shim": "select",
     "total_size_optimized": "",
     "total_size_unoptimized": "",
     "image_compression": "",
     "total_original": "",
     "Active": true,
     "ServiceWorker": false,
-    "SplashScreen":true,
-    "Spinner":false
+    "SplashScreen": true,
+    "Spinner": false,
+    "imagesCount":0
 };
 
 
@@ -35,25 +36,21 @@ let vue_data = {
 // }
 
 
-browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    console.log(request);
+browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    //console.log(request);
     if (sender.tab && sender.tab.active) {
         console.log("Message from active tab");
         localStorage.setItem('clog', JSON.stringify(request));
         if (request.active === false) {
             vue_data["Active"] = false;
-
         }
-
+        vue_data["imagesCount"]=Object.keys(request.optimized).length;
+        //console.log("count: "+Object.keys(request.optmized).length);
         vue_data["ServiceWorker"] = request.serviceWorker;
-
-
         summarizeImagesModel(request);
-            
         vue_data["Spinner"] = false;
-
     }
-    console.log("From popup: ", sender, request);
+    //console.log("From popup: ", sender, request);
 });
 
 /**
@@ -95,7 +92,6 @@ function summarizeImagesModel(images_summary_input) {
 
 }
 
-
 function numberWithSpaces(x) {
     let x_str = x.toString();
     let val = x_str.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -107,7 +103,9 @@ function imageCompression(total_optimized, total_original) {
     return result
 
 }
-
+function myVersion() {
+    document.getElementById("version").innerText="v"+ chrome.app.getDetails().version;
+}
 function restoreData(vue_data) {
     let resultP = new Promise((resolve, reject) => {
         browser.storage.sync.get(["model_data"]).then((items) => {
@@ -139,11 +137,11 @@ window.vue_body_app = new Vue({
     data: vue_data,
     el: "#app-root",
     methods: {
-        changeShim: function(to_what) {
+        changeShim: function (to_what) {
             browser.tabs.query({
-                    'active': true,
-                    'currentWindow': true
-                })
+                'active': true,
+                'currentWindow': true
+            })
                 .then(
                     (tabs) => {
                         return browser.tabs.sendMessage(tabs[0].id, { newShim: to_what });
@@ -153,22 +151,23 @@ window.vue_body_app = new Vue({
                 });
             this.saveData();
         },
-        saveData: function() {
+        saveData: function () {
             let the_data = this.$data;
             browser.storage.sync.set({
                 "model_data": the_data
             });
         },
-        SplashScreenChange:function(){
-         
-            vue_data["SplashScreen"]=false;
-            vue_data["Spinner"]=true;
+        SplashScreenChange: function () {
+
+            vue_data["SplashScreen"] = false;
+            vue_data["Spinner"] = true;
+            this.changeShim("select");
 
         }
     },
 
     watch: {
-        shim: function(new_shim, old_shim) {
+        shim: function (new_shim, old_shim) {
             console.log("Shim changed to ", new_shim);
             this.changeShim(new_shim);
         }
@@ -176,3 +175,4 @@ window.vue_body_app = new Vue({
 });
 
 restoreData(vue_data);
+myVersion();

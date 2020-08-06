@@ -8,11 +8,11 @@
             width: 30px;
             outline: none;
         }
-        
+
         .exportcsvdiv {
             text-align: center;
         }
-        
+
         .exportcsvdiv a {
             color: #ffffff;
         }
@@ -25,7 +25,7 @@
 <body>
     <div class="title-block">
         <header>
-            <span class="version">v0.2</span>
+            <span class="version" id="version"></span>
             <img alt="logo" class="logo" src="icons/icon_128x128.png">
             <h1>ShimmerCat Image Extension</h1>
         </header>
@@ -44,15 +44,17 @@
         <div class="radiobutton-area" v-if="Active && !ServiceWorker &&SplashScreen==false">
             <p class="p-position">Show</p>
             <div class="r-position t-1">
-                <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized" checked v-model="shim">
+                <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized" v-model="shim">
                 <label for="optimized">Optimized images</label>
             </div>
             <div class="r-position t-2">
-                <input class="shim-radio" type="radio" id="unoptimized" name="shim-type" value="unoptimized" v-model="shim">
+                <input class="shim-radio" type="radio" id="unoptimized" name="shim-type" value="unoptimized"
+                    v-model="shim">
                 <label for="unoptimized">Original images</label>
             </div>
             <div class="r-position t-3">
-                <input class="shim-radio" type="radio" id="select" name="shim-type" value="select" v-model="shim">
+                <input class="shim-radio" type="radio" id="select" name="shim-type" value="select" checked
+                    v-model="shim">
                 <label for="select">Selection</label>
             </div>
         </div>
@@ -65,9 +67,9 @@
                 <div class="info info-grid">
                     <div class="text-ul-li">
                         <span>
-                    When you show "Selection", images are dis-
-                    <br>played as:
-                </span>
+                            When you show "Selection", images are dis-
+                            <br>played as:
+                        </span>
                         <ul class="list-ul">
                             <li>Sepia images: optimized</li>
                             <li>Inverted images: Not possible to both
@@ -99,7 +101,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="exportcsvdiv"><a href="download.html" class="btn btn-top">Export to CSV</a></div>
+                <div class="ImagesCount">
+                    <label>Images Detected: {{imagesCount}}</label>
+                </div>
+                <div class="exportcsvdiv">
+                    <a href="download.html" class="btn btn-top">Export to CSV</a>
+                </div>
             </div>
         </div>
         <div class="text-center" v-if="SplashScreen==true">
@@ -113,6 +120,8 @@
                 <br>the check only takes a few seconds
             </p>
             <div>
+
+
                 <a href="#" v-on:click="SplashScreenChange" class="btn">Find optimized images</a>
             </div>
         </div>

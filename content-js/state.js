@@ -435,7 +435,7 @@ function changeToUnoptimized() {
     });
 }
 
-let shimSelected = "optimized";
+let shimSelected = "select";
 
 browser.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {

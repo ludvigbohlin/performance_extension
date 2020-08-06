@@ -15,18 +15,14 @@ function download_csv(){
 			a.push(key);
 		}
 	}
-	 
 	for (var key in data.unoptimized) {
 		if (data.unoptimized.hasOwnProperty(key)) {
 			b.push(data.unoptimized[key]);
 		}
 		
 	} 
-
-	for (var key in data.optimized) {
-		
+	for (var key in data.optimized) {	
 		if (data.optimized.hasOwnProperty(key)) {
-	
 			var optimizedKey = data.optimized[key];
 			console.log("From optimized key")
 			console.log(optimizedKey)
@@ -38,13 +34,11 @@ function download_csv(){
 						if (key1 =='transfer_size'){
 						c.push(optimizedKey[key1]);
 						}
-					
 					}
 				}
 			}
-	
 		}	
-	
+
 	var combined = [];
 	for(var i=0; i < a.length; i++){
 		console.log('FROM DOWNLOAD JS ')
@@ -58,7 +52,6 @@ function download_csv(){
 	csv += cimg + ", "+col.realsize +", "+col.optimizedSize;
 	csv += "\n";
 
-
 	}); 
 	var filename = Date.now();
 	var hiddenElement = document.createElement('a');
@@ -66,6 +59,4 @@ function download_csv(){
     hiddenElement.target = '_blank';
     hiddenElement.download = filename+'.csv';
     hiddenElement.click();
-	
-	
 }

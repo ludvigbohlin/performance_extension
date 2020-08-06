@@ -276,7 +276,10 @@ ul li::before {
     display: inline-block;
     width: 125px;
 }
-
+.ImagesCount{
+    text-align: center;
+    margin-top: 31%;
+}
 .btn-top {
-    top: 119px;
+    top: 20px;
 }
