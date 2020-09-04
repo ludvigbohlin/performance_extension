@@ -37,9 +37,9 @@ let vue_data = {
 
 
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    //console.log(request);
+    console.log(request);
     if (sender.tab && sender.tab.active) {
-        console.log("Message from active tab");
+        // console.log("Message from active tab");
         localStorage.setItem('clog', JSON.stringify(request));
         if (request.active === false) {
             vue_data["Active"] = false;
@@ -80,9 +80,9 @@ function summarizeImagesModel(images_summary_input) {
 
     let total_optimized_size = 0.0;
     for (let im_url of Object.getOwnPropertyNames(images_summary_input.optimized)) {
-        console.log("From the total optimised function ")
-        console.log(im_url)
-        console.log(images_summary_input.optimized[im_url].transfer_size)
+        // console.log("From the total optimised function ")
+        // console.log(im_url)
+        // console.log(images_summary_input.optimized[im_url].transfer_size)
         total_optimized_size += images_summary_input.optimized[im_url].transfer_size;
     }
 
@@ -147,7 +147,7 @@ window.vue_body_app = new Vue({
                         return browser.tabs.sendMessage(tabs[0].id, { newShim: to_what });
                     })
                 .then((response) => {
-                    console.log(response);
+                    // console.log(response);
                 });
             this.saveData();
         },
@@ -168,7 +168,7 @@ window.vue_body_app = new Vue({
 
     watch: {
         shim: function (new_shim, old_shim) {
-            console.log("Shim changed to ", new_shim);
+            // console.log("Shim changed to ", new_shim);
             this.changeShim(new_shim);
         }
     }

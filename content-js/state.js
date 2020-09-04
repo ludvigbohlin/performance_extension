@@ -9,7 +9,7 @@ function* iterateOnImages() {
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
-            //console.log(` This is the url ${url}`);
+            // console.log(` This is the url ${url}`);
             let doc_hostname = document.location.hostname;
             if (url.hostname === doc_hostname) {
                 yield [im, url];
@@ -17,9 +17,9 @@ function* iterateOnImages() {
         }
         if (retrieving(im.style['backgroundImage'])) {
             let returned_url = retrieving(im.style['backgroundImage']);
-            console.log(`this is from reteriving${returned_url}`)
+            // console.log(`this is from reteriving${returned_url}`)
             let url = new URL(returned_url);
-            console.log(`this is from donwnside ${url}`)
+            // console.log(`this is from donwnside ${url}`)
             let doc_hostname = document.location.hostname;
             if (url.hostname === doc_hostname) {
                 yield [im, url];
@@ -27,6 +27,29 @@ function* iterateOnImages() {
         }
     }
 }
+
+// function* iterateOnServiceWorkerImages() {
+//     let images = document.querySelectorAll('*,img.lazyloaded');
+//     for (let im of images) {
+//         if (canUseUrl(im.currentSrc)) {
+//             let url = new URL(im.currentSrc);
+//             let doc_hostname = document.location.hostname;
+//             if (url.hostname === doc_hostname) {
+//                 yield [im, url];
+//             }
+//         }
+//         if (retrieving(im.style['backgroundImage'])) {
+//             let returned_url = retrieving(im.style['backgroundImage']);
+//             // console.log(`this is from reteriving${returned_url}`)
+//             let url = new URL(returned_url);
+//             // console.log(`this is from donwnside ${url}`)
+//             let doc_hostname = document.location.hostname;
+//             if (url.hostname === doc_hostname) {
+//                 yield [im, url];
+//             }
+//         }
+//     }
+// }
 
 
 
@@ -72,34 +95,90 @@ function displaySelected() {
     }
 }
 
+function serviceWorkerDisplay() {
+    optimizedSizeModel = {};
+    unoptimizedSizeModel = {};
+    for (let [im, url] of iterateOnImages()) {
+        let h = highlightAsWebp.bind(null, im);
+        let g = highlightAsProcessing.bind(null, im);
+        let i = highlightAsNonViable.bind(null, im);
+
+        let use_url_for_highlight = originalURLOfImage(im);
+        // original image on domain isn't using haps by default so we do not need this
+        // let use_url = toNoHAPsURL(use_url_for_highlight);
+        populateUnoptimizedSizeModel(use_url_for_highlight);
+
+        let optimised_image_url = optimisedURLofImage(im);
+
+        im.currentSrc = use_url_for_highlight;
+        im.src = use_url_for_highlight;
+
+        // urlPointsToStatus(use_url_for_highlight)
+        //     .then(([status, transfer_size]) => {
+        //         removeCustomStyles(im);
+        //         if (status === "ready") {
+        //             im.classList.remove("scbca-gray");
+        //             h();
+        //         } else if (status === "non-viable") {
+        //             im.classList.remove("scbca-gray");
+        //             i();
+        //         } else if (status === "in-processing") {
+        //             im.classList.remove("scbca-gray");
+        //             g();
+        //         } else {
+        //             im.classList.add("scbca-gray");
+        //         }
+        //         if (transfer_size !== null) {
+        //             optimizedSizeModel[use_url_for_highlight] = {
+        //                 'status': status,
+        //                 'transfer_size': transfer_size
+        //             }
+        //         }
+        //     });
+    } 
+}
+
+function optimisedURLofImage(im){
+    // make get request to cloud domain
+
+}
 
 function refreshSelectedView() {
     if (currentView === "selected") {
+        if (CheckWorkerProcess()){
+            serviceWorkerDisplay();        
+        }else{
         displaySelected();
-        window.setTimeout(refreshSelectedView, 15000);
-        window.setTimeout(sendModelSummaries, 3000);
+        }
+        // window.setTimeout(refreshSelectedView, 15000);
+        // window.setTimeout(sendModelSummaries, 3000);
     }
 }
 
 
 function changeToSelected() {
     if (currentView !== "selected") {
-        window.setTimeout(sendModelSummaries, 3000);
-        window.setTimeout(refreshSelectedView, 15000);
+        // window.setTimeout(sendModelSummaries, 3000);
+        // window.setTimeout(refreshSelectedView, 15000);
     }
     currentView = "selected";
+    if (CheckWorkerProcess()){
+        serviceWorkerDisplay();        
+    }else{
     displaySelected();
+    }
 }
 
 
 function sendModelSummaries() {
-    CheckWorkerProcess();
+    // CheckWorkerProcess();
+    // serviceWorker = CheckWorkerProcess();
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
         'optimized': optimizedSizeModel,
         'active': Active,
-        'serviceWorker': serviceWorker
+        'serviceWorker': serviceWorker,
     }).then(
         () => { },
         () => { },
@@ -175,9 +254,9 @@ function retrieving(url) {
 
     }
     else {
-        console.log(url)
-        console.log(`Before placing ${typeof (url)}`)
-        console.log(`The length = ${url.length}`)
+        // console.log(url)
+        // console.log(`Before placing ${typeof (url)}`)
+        // console.log(`The length = ${url.length}`)
         url = "https://" + document.location.hostname + url.replace(/^url\(['"](.+)['"]\)/, '$1');
         // PARAMETER FOR IMAGES SELECTION
         var dotIndex = url.lastIndexOf('.');
@@ -188,18 +267,18 @@ function retrieving(url) {
         let images_extensions = ['.png', '.jpg']
         if (images_extensions.includes(ext)) {
 
-            console.log(`from retriving funciton ${url}`)
+            // console.log(`from retriving funciton ${url}`)
 
             return url;
         }
         else if (/.jpg\?preset|.png\?preset|.gif\?preset/.test(url)) {
-            console.log("Checked via jpg")
-            console.log(url)
+            // console.log("Checked via jpg")
+            // console.log(url)
             return url;
         }
         else {
-            console.log("The issue is ")
-            console.log(url)
+            // console.log("The issue is ")
+            // console.log(url)
         }
 
     }
@@ -258,13 +337,13 @@ function
 
     image_opt_status_from_headers(response) {
     let headers_status = null;
-
+    // console.log(response);
     for (let
         /** @type String[] */
         header_val_arr of response.headers.entries()) {
         let [header_name, header_value] = header_val_arr;
         //console.log(`The header value ${header_name} and ${header_value}`)
-        console.log(header_val_arr);
+        // console.log(header_val_arr);
 
         if (header_name === "sc-note") {
             Active = true;
@@ -279,7 +358,7 @@ function
                 break;
             }
             else {
-                console.log('Open the value')
+                // console.log('Open the value')
             }
         }
 
@@ -332,11 +411,11 @@ function urlPointsToStatus(url) {
         prom.then(
             (response) => {
                 if (response.status === 200) {
-                    console.log("This is the response of header")
-                    console.log(response.headers);
+                    // console.log("This is the response of header")
+                    // console.log(response.headers);
                     let headers_status = image_opt_status_from_headers(response);
                     let indicated_size = size_from_headers(response);
-                    console.log(`The header status ${headers_status} and ${indicated_size}`)
+                    // console.log(`The header status ${headers_status} and ${indicated_size}`)
                     //optimizedSizeModel[captured_url] = indicated_size;
                     //noinspection JSIncompatibleTypesComparison;
                     if (headers_status === null) {
@@ -380,8 +459,8 @@ function populateUnoptimizedSizeModel(url) {
     prom.then(
         (response) => {
             if (response.status === 200) {
-                console.log("For unptomized")
-                console.log(response.headers);
+                // console.log("For unptomized")
+                // console.log(response.headers);
                 let indicated_size = size_from_headers(response);
                 unoptimizedSizeModel[url] = indicated_size;
 
@@ -402,6 +481,7 @@ function toNoHAPsURL(original_url) {
 
 function originalURLOfImage(im) {
     let dataset = im.dataset;
+    // console.log(dataset);
     if (dataset.hasOwnProperty("scbOriginalLocation")) {
     }
     else if (im.currentSrc) {
@@ -456,7 +536,7 @@ browser.runtime.onMessage.addListener(
         } else if (request.hasOwnProperty("refreshView") && shimSelected === "select") {
             // Do this once more ? .. this is not the most efficient
             // way to do stuff, but ...
-            console.log("refreshView");
+            // console.log("refreshView");
             changeToSelected();
         }
 
@@ -469,9 +549,40 @@ CheckWorkerProcess = function () {
         if (scripts[i].src) {
             if (scripts[i].src.includes("sc-sw-installer")) {
                 serviceWorker = true;
-                break;
+                let origin = window.location.origin;
+                //get sc script
+                let fetch_sc_script = new Request(
+                    origin + "/sc-sw.min.js",
+                    {
+                        "method": "GET",
+                    });
+                    
+                
+                fetch(fetch_sc_script).then(function(res){
+                    return res.text()
+                }).then(function(data){
+                    //parse cloud domain
+
+                    // create substring of switch_domain_for_images object
+                    var start = data.search("switch_domains_for_images") + 27;
+                    var end =data.search("shimmercat.cloud") + 18; 
+
+                    // parse as JSON (JSON.parse(string)) and return object so we can iterate over it
+                    // create substring
+                    var substring = data.substring(start, end);
+                    console.log(substring);
+                    var newStart = substring.search(':') + 3;
+                    var newEnd = substring.search('}') - 1;
+                    var domain = substring.substring(newStart, newEnd);
+                    console.log(domain);
+                    // var n = data.search("shimmercat");
+                    // console.log(n);
+                })
+                return true;
             }
         }
     }
+    serviceWorker = false;
+    return false;
 
 }
