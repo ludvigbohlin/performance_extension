@@ -4,25 +4,30 @@ let unoptimizedSizeModel = null;
 let currentView = null;
 let Active = false;
 let serviceWorker = false;
+let serviceWorkerDomains = {};
 function* iterateOnImages() {
     let images = document.querySelectorAll('*,img.lazyloaded');
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
-            // console.log(` This is the url ${url}`);
             let doc_hostname = document.location.hostname;
-            if (url.hostname === doc_hostname) {
+
+            if (!serviceWorker && url.hostname === doc_hostname) {
                 yield [im, url];
+            }else{
+                yield[im, url];
             }
         }
         if (retrieving(im.style['backgroundImage'])) {
             let returned_url = retrieving(im.style['backgroundImage']);
             // console.log(`this is from reteriving${returned_url}`)
             let url = new URL(returned_url);
-            // console.log(`this is from donwnside ${url}`)
             let doc_hostname = document.location.hostname;
-            if (url.hostname === doc_hostname) {
+            
+            if (!serviceWorker && url.hostname === doc_hostname) {
                 yield [im, url];
+            }else{
+                yield[im, url];
             }
         }
     }
@@ -96,74 +101,106 @@ function displaySelected() {
 }
 
 function serviceWorkerDisplay() {
+    console.log("serviceWorker running");
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
     for (let [im, url] of iterateOnImages()) {
         let h = highlightAsWebp.bind(null, im);
         let g = highlightAsProcessing.bind(null, im);
         let i = highlightAsNonViable.bind(null, im);
-
+        // console.log(url);
         let use_url_for_highlight = originalURLOfImage(im);
         // original image on domain isn't using haps by default so we do not need this
         // let use_url = toNoHAPsURL(use_url_for_highlight);
         populateUnoptimizedSizeModel(use_url_for_highlight);
-
-        let optimised_image_url = optimisedURLofImage(im);
-
+        
+        let optimised_image_url = getServiceWorkerUrl(url);
+        
         im.currentSrc = use_url_for_highlight;
         im.src = use_url_for_highlight;
 
-        // urlPointsToStatus(use_url_for_highlight)
-        //     .then(([status, transfer_size]) => {
-        //         removeCustomStyles(im);
-        //         if (status === "ready") {
-        //             im.classList.remove("scbca-gray");
-        //             h();
-        //         } else if (status === "non-viable") {
-        //             im.classList.remove("scbca-gray");
-        //             i();
-        //         } else if (status === "in-processing") {
-        //             im.classList.remove("scbca-gray");
-        //             g();
-        //         } else {
-        //             im.classList.add("scbca-gray");
-        //         }
-        //         if (transfer_size !== null) {
-        //             optimizedSizeModel[use_url_for_highlight] = {
-        //                 'status': status,
-        //                 'transfer_size': transfer_size
-        //             }
-        //         }
-        //     });
+        // now we need to make get requests to compute & compare sizes
+        
+
+
+        urlPointsToStatus(optimised_image_url)
+            .then(([status, transfer_size]) => {
+                // console.log("status: ", status);
+                // console.log("transfer_size: ", transfer_size);
+                removeCustomStyles(im);
+                if (status === "ready") {
+                    im.classList.remove("scbca-gray");
+                    h();
+                } else if (status === "non-viable") {
+                    im.classList.remove("scbca-gray");
+                    i();
+                } else if (status === "in-processing") {
+                    im.classList.remove("scbca-gray");
+                    g();
+                } else {
+                    im.classList.add("scbca-gray");
+                }    
+                if (transfer_size !== null) {
+                    optimizedSizeModel[use_url_for_highlight] = {
+                        'status': status,
+                        'transfer_size': transfer_size
+                    }
+                }
+            });
     } 
+    // console.log("optimised: ",optimizedSizeModel);
+    // console.log("unoptimised: ", unoptimizedSizeModel);
 }
 
-function optimisedURLofImage(im){
-    // make get request to cloud domain
-
-}
-
-function refreshSelectedView() {
-    if (currentView === "selected") {
-        if (CheckWorkerProcess()){
-            serviceWorkerDisplay();        
-        }else{
-        displaySelected();
+function getServiceWorkerUrl(url){
+    // console.log(url)
+    var host = url.host;
+    domains = Object.keys(serviceWorkerDomains);
+    if (host in domains){
+        return "https://" + serviceWorkerDomains[host] + url.pathname + url.search;
+    }else{
+        for (const domain of domains){
+            if (domain.includes(host) || host.includes(domain)){
+                return "https://" + serviceWorkerDomains[domain] + url.pathname + url.search; 
+            }
         }
-        // window.setTimeout(refreshSelectedView, 15000);
-        // window.setTimeout(sendModelSummaries, 3000);
+        return undefined
     }
 }
 
+function optimisedURLofImage(im){
+    //lookup image src in serviceWorkerDomains to get correct cloud domain
+    // let cloud_img_url =  
 
-function changeToSelected() {
+    // make get request to cloud domain
+
+
+}
+
+// function refreshSelectedView() {
+//     if (currentView === "selected") {
+//         if (CheckWorkerProcess()){
+//             serviceWorkerDisplay();        
+//         }else{
+//         displaySelected();
+//         }
+//         // window.setTimeout(refreshSelectedView, 15000);
+//         // window.setTimeout(sendModelSummaries, 3000);
+//     }
+// }
+
+
+async function changeToSelected() {
     if (currentView !== "selected") {
         // window.setTimeout(sendModelSummaries, 3000);
         // window.setTimeout(refreshSelectedView, 15000);
     }
     currentView = "selected";
+    // var result = await CheckWorkerProcess();
+    // console.log(result)
     if (CheckWorkerProcess()){
-        serviceWorkerDisplay();        
+        getServiceWorkerDomains();
+        // serviceWorkerDisplay();        
     }else{
     displaySelected();
     }
@@ -337,15 +374,16 @@ function
 
     image_opt_status_from_headers(response) {
     let headers_status = null;
-    // console.log(response);
+    console.log(response);
     for (let
         /** @type String[] */
         header_val_arr of response.headers.entries()) {
         let [header_name, header_value] = header_val_arr;
-        //console.log(`The header value ${header_name} and ${header_value}`)
-        // console.log(header_val_arr);
+        console.log(`The header value ${header_name} and ${header_value}`)
+        console.log(header_val_arr);
 
         if (header_name === "sc-note") {
+            // console.log("SC-NOTE!!!!!");
             Active = true;
             if (header_value.includes("webp0=nv")) {
                 headers_status = 'non-viable';
@@ -390,18 +428,23 @@ function size_from_headers(response) {
 
 
 function urlPointsToStatus(url) {
+    let mode = "same-origin";
     let headers = new Headers({
         "cache-control": "no-cache",
         "accept": "image/webp,image/apng,image/*",
         "accept-encoding": "gzip, deflate, br",
     });
+    if(serviceWorker){
+        mode = "cors";
+        headers = {}
+    }
 
     let fetch_request = new Request(
         url,
         {
             "headers": headers,
             "method": "GET",
-            "mode": "same-origin",
+            "mode": mode,
             "cache": "no-store"
         });
 
@@ -411,9 +454,13 @@ function urlPointsToStatus(url) {
         prom.then(
             (response) => {
                 if (response.status === 200) {
-                    // console.log("This is the response of header")
-                    // console.log(response.headers);
+                    console.log("This is the response of header")
+                    // console.log(response.headers.keys())
                     let headers_status = image_opt_status_from_headers(response);
+                    // for (var pair of response.headers.entries()) {
+                    //     console.log(pair[0]+ ': '+ pair[1]);
+                    //  }
+                    // console.log(headers_status);
                     let indicated_size = size_from_headers(response);
                     // console.log(`The header status ${headers_status} and ${indicated_size}`)
                     //optimizedSizeModel[captured_url] = indicated_size;
@@ -439,6 +486,10 @@ function urlPointsToStatus(url) {
 }
 
 function populateUnoptimizedSizeModel(url) {
+    let mode = "same-origin";
+    if(serviceWorker){
+        mode = "no-cors";
+    }
     let headers = new Headers({
         "cache-control": "no-cache",
         "accept": "image/jpeg,image/apng,image/*",
@@ -450,7 +501,7 @@ function populateUnoptimizedSizeModel(url) {
         {
             "headers": headers,
             "method": "GET",
-            "mode": "same-origin",
+            "mode": mode,
             "cache": "no-store"
         });
 
@@ -548,41 +599,36 @@ CheckWorkerProcess = function () {
     for (var i = 0; i < scripts.length; i++) {
         if (scripts[i].src) {
             if (scripts[i].src.includes("sc-sw-installer")) {
-                serviceWorker = true;
-                let origin = window.location.origin;
-                //get sc script
-                let fetch_sc_script = new Request(
-                    origin + "/sc-sw.min.js",
-                    {
-                        "method": "GET",
-                    });
-                    
-                
-                fetch(fetch_sc_script).then(function(res){
-                    return res.text()
-                }).then(function(data){
-                    //parse cloud domain
-
-                    // create substring of switch_domain_for_images object
-                    var start = data.search("switch_domains_for_images") + 27;
-                    var end =data.search("shimmercat.cloud") + 18; 
-
-                    // parse as JSON (JSON.parse(string)) and return object so we can iterate over it
-                    // create substring
-                    var substring = data.substring(start, end);
-                    console.log(substring);
-                    var newStart = substring.search(':') + 3;
-                    var newEnd = substring.search('}') - 1;
-                    var domain = substring.substring(newStart, newEnd);
-                    console.log(domain);
-                    // var n = data.search("shimmercat");
-                    // console.log(n);
-                })
-                return true;
+                return true
             }
         }
     }
     serviceWorker = false;
     return false;
-
 }
+
+function getServiceWorkerDomains(){
+    let origin = window.location.origin;
+    //get sc script to get serviceWorker domains
+    let fetch_sc_script = new Request(
+        origin + "/sc-sw.min.js",
+        {
+            "method": "GET",
+        });
+        
+    fetch(fetch_sc_script)
+    .then(function(res){
+        return res.text()
+    }).then(function(data){
+        // get string indices for range of switch_domain_for_images object
+        var start = data.search("switch_domains_for_images") + 26;
+        var end =data.search("}") +1; 
+
+        // create substring
+        var serviceWorkerDomainsObjString = data.substring(start, end);
+        // parse as JSON & save in global variable
+        serviceWorkerDomains = JSON.parse(serviceWorkerDomainsObjString);
+        console.log("serviceWorkerDomains: ",serviceWorkerDomains);
+        serviceWorker = true;
+    }).then(function(){serviceWorkerDisplay()})
+} 
