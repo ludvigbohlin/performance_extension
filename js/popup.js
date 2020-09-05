@@ -42,6 +42,7 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         // console.log("Message from active tab");
         localStorage.setItem('clog', JSON.stringify(request));
         if (request.active === false) {
+            console.log("true");
             vue_data["Active"] = false;
         }
         vue_data["imagesCount"]=Object.keys(request.optimized).length;
@@ -89,6 +90,9 @@ function summarizeImagesModel(images_summary_input) {
     vue_data["total_size_optimized"] = numberWithSpaces(formatBytes(total_optimized_size));
     vue_data["total_size_unoptimized"] = numberWithSpaces(formatBytes(total_unoptimized_size));
     vue_data["image_compression"] = imageCompression(total_optimized_size, total_unoptimized_size) + '%';
+    console.log("total optimised: ", vue_data["total_size_optimized"]);
+    console.log("total unoptimised: ", vue_data["total_size_unoptimized"]);
+    console.log("compression: ", vue_data["image_compression"]);
 
 }
 

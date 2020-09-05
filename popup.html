@@ -31,17 +31,17 @@
         </header>
     </div>
     <div id="app-root">
-        <div v-if="ServiceWorker==true&&SplashScreen==false" class="Message">
+        <!-- <div v-if="ServiceWorker==true&&SplashScreen==false" class="Message">
             <label class="ErrorMessage">
                 This website uses ShimmerCat Service Worker.
             </label>
-        </div>
+        </div> -->
         <div v-if="!Active && !ServiceWorker&&SplashScreen==false" class="Message">
             <label class="ErrorMessage">
                 This Website is not served by ShimmerCat.
             </label>
         </div>
-        <div class="radiobutton-area" v-if="Active && !ServiceWorker &&SplashScreen==false">
+        <div class="radiobutton-area" v-if="Active &&SplashScreen==false">
             <p class="p-position">Show</p>
             <div class="r-position t-1">
                 <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized" v-model="shim">

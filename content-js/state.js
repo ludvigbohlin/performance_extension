@@ -1,8 +1,9 @@
+const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
 
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
 let currentView = null;
-let Active = false;
+let Active = true;
 let serviceWorker = false;
 let serviceWorkerDomains = {};
 function* iterateOnImages() {
@@ -108,13 +109,15 @@ function serviceWorkerDisplay() {
         let h = highlightAsWebp.bind(null, im);
         let g = highlightAsProcessing.bind(null, im);
         let i = highlightAsNonViable.bind(null, im);
-        // console.log(url);
+        let optimised_image_url = getServiceWorkerUrl(url);
+
+        // if domain isn't in serviceWorker domains definition or url is mangled, skip image
+        if (optimised_image_url === undefined){
+            continue;
+        }
         let use_url_for_highlight = originalURLOfImage(im);
-        // original image on domain isn't using haps by default so we do not need this
-        // let use_url = toNoHAPsURL(use_url_for_highlight);
         populateUnoptimizedSizeModel(use_url_for_highlight);
         
-        let optimised_image_url = getServiceWorkerUrl(url);
         
         im.currentSrc = use_url_for_highlight;
         im.src = use_url_for_highlight;
@@ -141,7 +144,8 @@ function serviceWorkerDisplay() {
                     im.classList.add("scbca-gray");
                 }    
                 if (transfer_size !== null) {
-                    optimizedSizeModel[use_url_for_highlight] = {
+                    // Active = true;
+                    optimizedSizeModel[optimised_image_url] = {
                         'status': status,
                         'transfer_size': transfer_size
                     }
@@ -151,6 +155,49 @@ function serviceWorkerDisplay() {
     // console.log("optimised: ",optimizedSizeModel);
     // console.log("unoptimised: ", unoptimizedSizeModel);
 }
+
+function onChunkedResponseComplete([result, response]) {
+    // console.log(response);
+    // console.log('all done!', result)
+    return result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT);
+  }
+  
+function onChunkedResponseError(err) {
+    console.error(err)
+}
+  
+  function processChunkedResponse(response) {
+    var text = '';
+    var count = 0;
+    var chunkSize = 0; 
+    var reader = response.body.getReader()
+    var decoder = new TextDecoder();
+    
+    return readChunk();
+  
+    function readChunk() {
+      return reader.read().then(appendChunks);
+    }
+  
+    function appendChunks(result) {
+      var chunk = decoder.decode(result.value || new Uint8Array, {stream: !result.done});
+    //   console.log('got chunk of', chunk.length, 'bytes')
+      chunkSize += chunk.length;
+    //   text += chunk
+      count+=1;
+    //   console.log('text so far is', text.length, 'bytes\n');
+      if (result.done) {
+        // console.log(response);
+        // console.log('total chunkSize: ', chunkSize)
+        // return text;
+        return [chunkSize, response];
+      } else {
+            // chunkSize += 4
+            // console.log('recursing')
+            return readChunk();
+      }
+    }
+  }
 
 function getServiceWorkerUrl(url){
     // console.log(url)
@@ -177,23 +224,23 @@ function optimisedURLofImage(im){
 
 }
 
-// function refreshSelectedView() {
-//     if (currentView === "selected") {
-//         if (CheckWorkerProcess()){
-//             serviceWorkerDisplay();        
-//         }else{
-//         displaySelected();
-//         }
-//         // window.setTimeout(refreshSelectedView, 15000);
-//         // window.setTimeout(sendModelSummaries, 3000);
-//     }
-// }
+function refreshSelectedView() {
+    if (currentView === "selected") {
+        if (CheckWorkerProcess()){
+            serviceWorkerDisplay();        
+        }else{
+        displaySelected();
+        }
+        // window.setTimeout(refreshSelectedView, 15000);
+        window.setTimeout(sendModelSummaries, 3000);
+    }
+}
 
 
 async function changeToSelected() {
     if (currentView !== "selected") {
-        // window.setTimeout(sendModelSummaries, 3000);
-        // window.setTimeout(refreshSelectedView, 15000);
+        window.setTimeout(sendModelSummaries, 3000);
+        window.setTimeout(refreshSelectedView, 15000);
     }
     currentView = "selected";
     // var result = await CheckWorkerProcess();
@@ -374,17 +421,17 @@ function
 
     image_opt_status_from_headers(response) {
     let headers_status = null;
-    console.log(response);
+    // console.log(response);
     for (let
         /** @type String[] */
         header_val_arr of response.headers.entries()) {
         let [header_name, header_value] = header_val_arr;
-        console.log(`The header value ${header_name} and ${header_value}`)
-        console.log(header_val_arr);
+        // console.log(`The header value ${header_name} and ${header_value}`)
+        // console.log(header_val_arr);
 
         if (header_name === "sc-note") {
             // console.log("SC-NOTE!!!!!");
-            Active = true;
+            // Active = true;
             if (header_value.includes("webp0=nv")) {
                 headers_status = 'non-viable';
                 break;
@@ -428,6 +475,7 @@ function size_from_headers(response) {
 
 
 function urlPointsToStatus(url) {
+    // console.log(url);
     let mode = "same-origin";
     let headers = new Headers({
         "cache-control": "no-cache",
@@ -447,14 +495,15 @@ function urlPointsToStatus(url) {
             "mode": mode,
             "cache": "no-store"
         });
-
+    
+    
     let prom = fetch(fetch_request);
 
     let resultP = new Promise((resolve, reject) => {
         prom.then(
             (response) => {
                 if (response.status === 200) {
-                    console.log("This is the response of header")
+                    // console.log("This is the response of header")
                     // console.log(response.headers.keys())
                     let headers_status = image_opt_status_from_headers(response);
                     // for (var pair of response.headers.entries()) {
@@ -487,14 +536,18 @@ function urlPointsToStatus(url) {
 
 function populateUnoptimizedSizeModel(url) {
     let mode = "same-origin";
-    if(serviceWorker){
-        mode = "no-cors";
-    }
     let headers = new Headers({
         "cache-control": "no-cache",
         "accept": "image/jpeg,image/apng,image/*",
         "accept-encoding": "gzip, deflate, br",
     });
+    if(serviceWorker){
+        mode = "cors";
+        headers = {
+            "accept": "image/jpeg,image/apng,image/*",
+            "accept-encoding": "gzip, deflate, br",
+    };
+    }
 
     let fetch_request = new Request(
         url,
@@ -508,20 +561,32 @@ function populateUnoptimizedSizeModel(url) {
     let prom = fetch(fetch_request);
 
     prom.then(
-        (response) => {
+        async (response) => {
             if (response.status === 200) {
-                // console.log("For unptomized")
-                // console.log(response.headers);
-                let indicated_size = size_from_headers(response);
-                unoptimizedSizeModel[url] = indicated_size;
-
+                // check for Content-Length header, if it doesn't exist we must use chunked request
+                if(response.headers.get("Content-Length") === null){
+                    // need to check and potentially refactor this
+                    let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
+                    console.log("indicated size (chunked)", indicated_size)
+                    unoptimizedSizeModel[url] = indicated_size;
+                }else{
+                    // for (var pair of response.headers.entries()) {
+                    //     console.log(pair[0]+ ': '+ pair[1]);
+                    // }
+                    let indicated_size = size_from_headers(response);
+                    console.log("indicated size (non-chunked)", indicated_size)
+                    unoptimizedSizeModel[url] = indicated_size;
+                }
             } else {
+                console.log(response);
             }
         },
         (error) => {
+            console.error(error);
         }
     );
 
+    
 }
 
 function toNoHAPsURL(original_url) {
