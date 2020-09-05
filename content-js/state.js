@@ -94,8 +94,9 @@ function displaySelected() {
                 if (transfer_size !== null) {
                     optimizedSizeModel[use_url_for_highlight] = {
                         'status': status,
-                        'transfer_size': transfer_size
-                    }
+                        'transfer_size': transfer_size,
+                        'pathname': url.pathname + url.search
+                    };
                 }
             });
     }
@@ -155,12 +156,13 @@ function serviceWorkerDisplay() {
                     // Active = true;
                     optimizedSizeModel[optimised_image_url] = {
                         'status': status,
-                        'transfer_size': transfer_size
+                        'transfer_size': transfer_size,
+                        'pathname': url.pathname + url.search};
                     }
                 }
                 
-        });
-    } 
+        );
+    }
     // console.log("optimised: ",optimizedSizeModel);
     // console.log("unoptimised: ", unoptimizedSizeModel);
 }
@@ -547,6 +549,7 @@ function urlPointsToStatus(url) {
 }
 
 function populateUnoptimizedSizeModel(url) {
+    let urlObj = new URL(url)
     let mode = "same-origin";
     let headers = new Headers({
         "cache-control": "no-cache",
@@ -580,14 +583,16 @@ function populateUnoptimizedSizeModel(url) {
                     // need to check and potentially refactor this
                     let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
                     console.log("indicated size (chunked)", indicated_size)
-                    unoptimizedSizeModel[url] = indicated_size;
+                    unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search}
                 }else{
                     // for (var pair of response.headers.entries()) {
                     //     console.log(pair[0]+ ': '+ pair[1]);
                     // }
+                    
+                    // Active = true;
                     let indicated_size = size_from_headers(response);
                     console.log("indicated size (non-chunked)", indicated_size)
-                    unoptimizedSizeModel[url] = indicated_size;
+                    unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search)}
                 }
             } else {
                 console.log(response);
@@ -599,6 +604,10 @@ function populateUnoptimizedSizeModel(url) {
     );
 
     
+}
+
+function stripHAPsSearchParam(url){
+    return url.replace('?sc-disable-haps=1', '');
 }
 
 function toNoHAPsURL(original_url) {

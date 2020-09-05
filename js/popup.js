@@ -76,7 +76,7 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 function summarizeImagesModel(images_summary_input) {
     let total_unoptimized_size = 0.0;
     for (let im_url of Object.getOwnPropertyNames(images_summary_input.unoptimized)) {
-        total_unoptimized_size += images_summary_input.unoptimized[im_url];
+        total_unoptimized_size += images_summary_input.unoptimized[im_url].transfer_size;
     }
 
     let total_optimized_size = 0.0;

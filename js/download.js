@@ -1,3 +1,4 @@
+
 download_csv();
 
 
@@ -5,44 +6,41 @@ download_csv();
 function download_csv(){
 	var s = localStorage.getItem("clog");
 	data =  JSON.parse(s);
+	console.log(data);
 	var a = [];
 	var b = [];
 	var c = [];
 	var combined = [];
 
+	// populate array with unoptimised img urls
 	for (var key in data.unoptimized) {
 		if (data.unoptimized.hasOwnProperty(key)) {
 			a.push(key);
 		}
 	}
+	// console.log(a);
+	// populate array with unoptimised transfer sizes
 	for (var key in data.unoptimized) {
 		if (data.unoptimized.hasOwnProperty(key)) {
-			b.push(data.unoptimized[key]);
-		}
-		
-	} 
-	for (var key in data.optimized) {	
-		if (data.optimized.hasOwnProperty(key)) {
-			var optimizedKey = data.optimized[key];
-			console.log("From optimized key")
-			console.log(optimizedKey)
-			for (var key1 in optimizedKey) {
-				console.log("This is the log")
-				console.log(key1)
-				if (optimizedKey.hasOwnProperty(key1)) {
-					//if(optimizedKey[key1]!="non-viable"){
-						if (key1 =='transfer_size'){
-						c.push(optimizedKey[key1]);
-						}
-					}
-				}
-			}
-		}	
+			b.push(data.unoptimized[key]["transfer_size"]);
 
+			console.log("key: ",key);
+			var optimizedKey = Object.keys(data.optimized).find(searchKey => data.optimized[searchKey]["pathname"] === data.unoptimized[key]["pathname"]);
+			console.log("optimizedKey", optimizedKey);	
+			c.push(data.optimized[optimizedKey]["transfer_size"])
+		}
+	} 
+	// console.log(b);
+	// populate array with optimised transfer sizes
+	// for (var key in data.optimized) {	
+	// 	if (data.optimized.hasOwnProperty(key)) {
+	// 		c.push(data.optimized[key]["transfer_size"]);
+	// 	}	
+	// }
 	var combined = [];
 	for(var i=0; i < a.length; i++){
-		console.log('FROM DOWNLOAD JS ')
-		console.log({img:a[i],realsize:b[i],optimizedSize:c[i]})
+		// console.log('FROM DOWNLOAD JS ')
+		// console.log({img:a[i],realsize:b[i],optimizedSize:c[i]})
 		combined.push({img:a[i],realsize:b[i],optimizedSize:c[i]});
 	}
 	
