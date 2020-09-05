@@ -109,6 +109,8 @@ function serviceWorkerDisplay() {
         let h = highlightAsWebp.bind(null, im);
         let g = highlightAsProcessing.bind(null, im);
         let i = highlightAsNonViable.bind(null, im);
+
+        let b = highlightAsServiceWorkerImage.bind(null, im);
         let optimised_image_url = getServiceWorkerUrl(url);
 
         // if domain isn't in serviceWorker domains definition or url is mangled, skip image
@@ -131,6 +133,11 @@ function serviceWorkerDisplay() {
                 // console.log("status: ", status);
                 // console.log("transfer_size: ", transfer_size);
                 removeCustomStyles(im);
+                // if serviceWorker processed then we colour it blue for now
+                if(serviceWorker){
+                    im.classList.remove("scbca-gray"); 
+                    b()
+                }else{
                 if (status === "ready") {
                     im.classList.remove("scbca-gray");
                     h();
@@ -143,6 +150,7 @@ function serviceWorkerDisplay() {
                 } else {
                     im.classList.add("scbca-gray");
                 }    
+            }
                 if (transfer_size !== null) {
                     // Active = true;
                     optimizedSizeModel[optimised_image_url] = {
@@ -150,7 +158,8 @@ function serviceWorkerDisplay() {
                         'transfer_size': transfer_size
                     }
                 }
-            });
+                
+        });
     } 
     // console.log("optimised: ",optimizedSizeModel);
     // console.log("unoptimised: ", unoptimizedSizeModel);
@@ -284,7 +293,10 @@ function highlightAsNonViable(im_element) {
     im_element.classList.add("scbca-non-viable");
 }
 
-
+function highlightAsServiceWorkerImage(im_element){
+    im_element.classList.add("scbca-serviceworker");
+ 
+}
 function removeCustomStyles(im_element) {
     const tokens = [
         "scbca-gray",
