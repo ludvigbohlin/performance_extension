@@ -1,3 +1,5 @@
+
+// constant to define how much loss compensation to give chunked transfer encoded images
 const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
 
 let optimizedSizeModel = null;
@@ -6,26 +8,31 @@ let currentView = null;
 let Active = true;
 let serviceWorker = false;
 let serviceWorkerDomains = {};
+
+// function that iterates through images in DOM & returns original & optimised image sources
 function* iterateOnImages() {
     let images = document.querySelectorAll('*,img.lazyloaded');
     let optimisationSource = '';
     for (let im of images) {
-
         if (canUseUrl(im.currentSrc)) {
             let originalUrl = new URL(im.currentSrc);
             let optimisedUrl = '';
             let doc_hostname = document.location.hostname;
 
+            // check if image is supported by the serviceWorker
             let optimised_image_url = getServiceWorkerUrl(originalUrl);
             if (optimised_image_url !== undefined){
                 optimisationSource = 'serviceWorker';
                 optimisedUrl = optimised_image_url;
                 populateUnoptimizedSizeModel(originalUrl, optimisationSource);
                 yield [im, originalUrl, optimisedUrl, optimisationSource];
+            // else image optimisation is processed via origin
             }else{
                 optimisedUrl = originalUrl;
                 if (originalUrl.hostname === doc_hostname) {
                     optimisationSource = 'origin'
+
+                    // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im));  
                     populateUnoptimizedSizeModel(originalUrl, optimisationSource);
                     yield [im, originalUrl, optimisedUrl, optimisationSource];
@@ -41,26 +48,31 @@ function* iterateOnImages() {
             let originalUrl = new URL(returned_url);
             let doc_hostname = document.location.hostname;
             
+            // check if image is supported by the serviceWorker
             let optimised_image_url = getServiceWorkerUrl(originalUrl);
             if (optimised_image_url !== undefined){
                 optimisationSource = 'serviceWorker';
                 optimisedUrl = optimised_image_url;
                 populateUnoptimizedSizeModel(originalUrl, optimisationSource);
                 yield [im, originalUrl, optimisedUrl, optimisationSource];
+            // else image optimisation is processed via origin
             }else{
                 optimisedUrl = originalUrl;
                 if (originalUrl.hostname === doc_hostname) {
                     optimisationSource = 'origin'
+
+                    // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
                     populateUnoptimizedSizeModel(originalUrl, optimisationSource); 
                     yield [im, originalUrl, optimisedUrl, optimisationSource];
+                // image compression not supported for the domain as it is not defined in serviceWorker and not the root url of the site
                 }else continue;
             }
         }
     }
 }
 
-
+// function that displays various styles based on the status of the image
 function displaySelected(){
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
@@ -95,6 +107,7 @@ function displaySelected(){
                 }    
                 if (transfer_size !== null) {
                     if(filetype.includes("image")){
+                        // add image to optimised images object ready for compression computation in popup.js
                         optimizedSizeModel[optimisedUrl] = {
                             'status': status,
                             'transfer_size': transfer_size,
@@ -102,7 +115,6 @@ function displaySelected(){
                             'filetype': filetype};
                     }
                 }else{
-                    console.log("transfer size null so not pushing: ", originalUrl);
                 }
                 }
                 
@@ -110,15 +122,18 @@ function displaySelected(){
     } 
 }
 
+// callback function for returning total chunk size of chunked image transfer
 function onChunkedResponseComplete([result, response]) {
     return result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT);
   }
-  
+
+// error handler for chunked image transfer
 function onChunkedResponseError(err) {
     console.error(err)
 }
-  
-  function processChunkedResponse(response) {
+
+// function that processes chunked image responses
+function processChunkedResponse(response) {
     var text = '';
     var count = 0;
     var chunkSize = 0; 
@@ -127,10 +142,12 @@ function onChunkedResponseError(err) {
     
     return readChunk();
   
+    // use reader to read chunk and pass into appendChunks ready for size aggregation
     function readChunk() {
       return reader.read().then(appendChunks);
     }
-  
+    
+    // function that adds the length of each chunk to total chunk size in order to compute file size
     function appendChunks(result) {
       var chunk = decoder.decode(result.value || new Uint8Array, {stream: !result.done});
       chunkSize += chunk.length;
@@ -141,8 +158,9 @@ function onChunkedResponseError(err) {
             return readChunk();
       }
     }
-  }
+}
 
+// gets the relevant optimised url for an image hosted on a serviceWorker-supported site
 function getServiceWorkerUrl(url){
     var host = url.host;
     domains = Object.keys(serviceWorkerDomains);
@@ -158,28 +176,33 @@ function getServiceWorkerUrl(url){
     }
 }
 
+// refreshes selectedview 
 async function refreshSelectedView() {
     let domains = await getServiceWorkerDomains();
     if (currentView === "selected") {
+        // check if site is serviceWorker supported and if so, get serviceWorker domains that are used on the site
         serviceWorker =  CheckWorkerProcess();
         if (serviceWorker){
             getServiceWorkerDomains();
         }else{
             displaySelected();
         }
+        // automated refresh & sending of data to popup.js
         window.setTimeout(refreshSelectedView, 15000);
         window.setTimeout(sendModelSummaries, 3000);
     }
 }
 
-
+// changes the view to selected
 async function changeToSelected() {
     if (currentView !== "selected") {
+        // automated refresh & sending of data to popup.js
         window.setTimeout(sendModelSummaries, 3000);
         window.setTimeout(refreshSelectedView, 15000);
     }
     currentView = "selected";
 
+    // check if site is serviceWorker supported and if so, get serviceWorker domains that are used on the site
     serviceWorker =  CheckWorkerProcess();
     if (serviceWorker){
         getServiceWorkerDomains();
@@ -188,7 +211,7 @@ async function changeToSelected() {
     }
 }
 
-
+// function that sends data to popup.js
 function sendModelSummaries() {
     browser.runtime.sendMessage({
         'kind': 'model-summary',
@@ -202,25 +225,28 @@ function sendModelSummaries() {
     );
 }
 
-
+// function that highlights a given element as a webp image
 function highlightAsWebp(im_element) {
     im_element.classList.add("scbca-webp");
 }
 
-
+// function that highlights a given element as a processing image
 function highlightAsProcessing(im_element) {
     im_element.classList.add("scbca-processing");
 }
 
-
+// function that highlights a given element as a non-viable image
 function highlightAsNonViable(im_element) {
     im_element.classList.add("scbca-non-viable");
 }
 
+// function that highlights a given element as an image processed by the serviceWorker
 function highlightAsServiceWorkerImage(im_element){
     im_element.classList.add("scbca-serviceworker");
  
 }
+
+// function that removes all styles for a given image element
 function removeCustomStyles(im_element) {
     const tokens = [
         "scbca-gray",
@@ -235,12 +261,13 @@ function removeCustomStyles(im_element) {
     }
 }
 
-
+// function that changes the view to optimised images only 
 function changeToOptimized() {
     currentView = 'optimized';
     let images = document.querySelectorAll('*,img.lazyloaded');
+
+    //iterate through images and change src to the optimised version
     images.forEach((im) => {
-        console.log("optimized");
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
             let doc_hostname = document.location.hostname;
@@ -285,9 +312,9 @@ function changeToOptimized() {
     });
 }
 
+// function that takes an element using a background image and retrieves the corresponding image url for it 
 function retrieving(url) {
     if (url == null || url == undefined || url.length == 0) {
-        //console.log("Url is found null")
         return false;
 
     }
@@ -302,23 +329,19 @@ function retrieving(url) {
         let images_extensions = ['.png', '.jpg']
         if (images_extensions.includes(ext)) {
 
-            // console.log(`from retriving funciton ${url}`)
 
             return url;
         }
         else if (/.jpg\?preset|.png\?preset|.gif\?preset/.test(url)) {
-            // console.log("Checked via jpg")
-            // console.log(url)
             return url;
         }
         else {
-            // console.log("The issue is ")
-            // console.log(url)
         }
 
     }
 }
 
+// function that validates each url
 function canUseUrl(url) {
     if (url === null || url === undefined) {
         return false;
@@ -327,6 +350,7 @@ function canUseUrl(url) {
 }
 
 
+// unused function, will leave in case it is needed later
 function isWEBPFile(arrayBuffer) {
     let byteArray = new Uint8Array(arrayBuffer);
 
@@ -361,11 +385,7 @@ function isWEBPFile(arrayBuffer) {
     return result;
 }
 
-/**
- *
- * @param {Response} response
- * @returns {?string}
- */
+// function that reads header values for a given image and determines the status of the image and how it will be visualised 
 function image_opt_status_from_headers(response) {
     let headers_status = null;
     for (let
@@ -385,18 +405,13 @@ function image_opt_status_from_headers(response) {
                 break;
             }
             else {
-                // console.log('Open the value')
             }
         }
     }
     return headers_status;
 }
 
-/**
- *
- * @param {Response} response
- * @returns {?number}
- */
+// function that reads header values for a given image and determines the file size of the image for computing compression amount  
 function size_from_headers(response) {
     let result = null;
     for (let
@@ -411,6 +426,7 @@ function size_from_headers(response) {
     return result;
 }
 
+// function that reads header values for a given image and determines the filetype of the image for filetype analytics  
 function filetype_from_headers(response){
     let result = null;
     for (let
@@ -426,6 +442,7 @@ function filetype_from_headers(response){
 }
 
 
+// function that makes a request to the optimised url of each image which then gives status information and file size
 function urlPointsToStatus(url, optimisationSource) {
     let mode = "cors";
     let headers = new Headers({
@@ -455,9 +472,13 @@ function urlPointsToStatus(url, optimisationSource) {
         prom.then(
             (response) => {
                 if (response.status === 200) {
+                    
+                    // get image status
                     let headers_status = image_opt_status_from_headers(response);
+                    // get image size
                     let indicated_size = size_from_headers(response);
 
+                    // get image filetype
                     let filetype = filetype_from_headers(response);
                     if (headers_status === null) {
 
@@ -467,12 +488,10 @@ function urlPointsToStatus(url, optimisationSource) {
                         resolve([headers_status, indicated_size, filetype]);
                     }
                 } else {
-                    console.log("optimized else: ", response);
                     resolve([null, null, null]);
                 }
             },
             (error) => {
-                console.log("optimized error: ", response);
                 resolve([null, null, null]);
             }
         )
@@ -481,6 +500,7 @@ function urlPointsToStatus(url, optimisationSource) {
     return resultP;
 }
 
+// function that makes a request to the original url of each image which then gives status information and file size
 function populateUnoptimizedSizeModel(url, optimisationSource) {
     let urlObj = new URL(url)
     let mode = "cors";
@@ -509,23 +529,26 @@ function populateUnoptimizedSizeModel(url, optimisationSource) {
             if (response.status === 200) {
                 // check for Content-Length header, if it doesn't exist we must use chunked request
                 if(response.headers.get("Content-Length") === null){
-                    // console.log("No content type header!!!");
-                    // console.log(response);
-                    // need to check and potentially refactor this
+                    // get image size
                     let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
+                    // get image filetype
                     let filetype = filetype_from_headers(response);
+                    // filter out erroneous text/html responses that are sometimes picked up
                     if(filetype.includes("image")){
                         unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search}
                     }
+                // else if Content-length header readily available
                 }else{
+                    // get image size
                     let indicated_size = size_from_headers(response);
+                    // get image filetype
                     let filetype = filetype_from_headers(response);
+                    // filter out erroneous text/html responses that are sometimes picked up
                     if(filetype.includes("image")){
                         unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search)}
                     }
                 }
             } else {
-                console.log(response);
             }
         },
         (error) => {
@@ -536,16 +559,19 @@ function populateUnoptimizedSizeModel(url, optimisationSource) {
     
 }
 
+// function to strip HAPs params from search params of url for tranmitting pathnames to popup.js
 function stripHAPsSearchParam(url){
     return url.replace('?sc-disable-haps=1', '');
 }
 
+// function for disabling haps of images
 function toNoHAPsURL(original_url) {
     let use_url = new URL(original_url);
     use_url.search = "?sc-disable-haps=1";
     return use_url;
 }
 
+// function for getting the original url of an image using haps
 function originalURLOfImage(im) {
     let dataset = im.dataset;
     if (dataset.hasOwnProperty("scbOriginalLocation")) {
@@ -560,6 +586,7 @@ function originalURLOfImage(im) {
     return original_url;
 }
 
+// change images to unoptimized versions
 function changeToUnoptimized() {
     currentView = "unoptimized";
     let images = document.querySelectorAll("*,img.lazyloaded");
@@ -589,12 +616,11 @@ function changeToUnoptimized() {
     });
 }
 
+// function for going from a serviceWorker url to an original via looking up it's corresponding domain in serviceWorker config
 function getOriginalFromServiceWorkerUrl(url){
     let urlObj = new URL(url)
     var host = urlObj.host;
-    console.log(host);
     domains = Object.values(serviceWorkerDomains);
-    console.log(domains);
     if (host in domains){
         const originalDomain = Object.keys(domains).find(key => domains[key] === host);
         return "https://" + originalDomain + urlObj.pathname + urlObj.search;
@@ -609,8 +635,10 @@ function getOriginalFromServiceWorkerUrl(url){
     }
 }
 
+// make select default view
 let shimSelected = "select";
 
+// event listener for on startup as well as when views are changed in popup.js
 browser.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
         if (request.hasOwnProperty("newShim")) {
@@ -627,9 +655,11 @@ browser.runtime.onMessage.addListener(
             changeToSelected();
         }
 
-    });
+    }
+);
 
-CheckWorkerProcess = function () {
+// function for checking whether a site is using the serviceWorker or not
+function CheckWorkerProcess () {
 
     let scripts = this.document.scripts;
     for (var i = 0; i < scripts.length; i++) {
@@ -642,6 +672,7 @@ CheckWorkerProcess = function () {
     return false;
 }
 
+// function for getting the supported serviceWorker domains from root/sc-sw.min.js
 function getServiceWorkerDomains(){
     let origin = window.location.origin;
     //get sc script to get serviceWorker domains
@@ -668,7 +699,6 @@ function getServiceWorkerDomains(){
             var serviceWorkerDomainsObjString = data.substring(start, end);
             // parse as JSON & save in global variable
             serviceWorkerDomains = JSON.parse(serviceWorkerDomainsObjString);
-            console.log("serviceWorkerDomains: ",serviceWorkerDomains);
             serviceWorker = true;
         }
     }).then(function(){
