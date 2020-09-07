@@ -77,7 +77,7 @@ function displaySelected() {
         im.src = use_url_for_highlight;
 
         urlPointsToStatus(use_url_for_highlight)
-            .then(([status, transfer_size]) => {
+            .then(([status, transfer_size, filetype]) => {
                 removeCustomStyles(im);
                 if (status === "ready") {
                     im.classList.remove("scbca-gray");
@@ -92,11 +92,13 @@ function displaySelected() {
                     im.classList.add("scbca-gray");
                 }
                 if (transfer_size !== null) {
+                    if(filetype.includes("image")){
                     optimizedSizeModel[use_url_for_highlight] = {
                         'status': status,
                         'transfer_size': transfer_size,
-                        'pathname': url.pathname + url.search
-                    };
+                        'pathname': url.pathname + url.search,
+                        'filetype': filetype};
+                    }
                 }
             });
     }
@@ -130,7 +132,7 @@ function serviceWorkerDisplay() {
 
 
         urlPointsToStatus(optimised_image_url)
-            .then(([status, transfer_size]) => {
+            .then(([status, transfer_size, filetype]) => {
                 // console.log("status: ", status);
                 // console.log("transfer_size: ", transfer_size);
                 removeCustomStyles(im);
@@ -154,11 +156,14 @@ function serviceWorkerDisplay() {
             }
                 if (transfer_size !== null) {
                     // Active = true;
+                    if(filetype.includes("image")){
                     optimizedSizeModel[optimised_image_url] = {
                         'status': status,
                         'transfer_size': transfer_size,
-                        'pathname': url.pathname + url.search};
+                        'pathname': url.pathname + url.search,
+                        'filetype': filetype};
                     }
+                }
                 }
                 
         );
@@ -487,6 +492,20 @@ function size_from_headers(response) {
     return result;
 }
 
+function filetype_from_headers(response){
+    let result = null;
+    for (let
+        /** @type String[] */
+        header_val_arr of response.headers.entries()) {
+        let [header_name, header_value] = header_val_arr;
+        if (header_name.match(/[Cc]ontent-[Tt]ype/)) {
+            result = header_value;
+            break;
+        }
+    }
+    return result; 
+}
+
 
 function urlPointsToStatus(url) {
     // console.log(url);
@@ -498,7 +517,7 @@ function urlPointsToStatus(url) {
     });
     if(serviceWorker){
         mode = "cors";
-        headers = {}
+        headers = {"accept": "image/webp,image/apng,image/*",}
     }
 
     let fetch_request = new Request(
@@ -528,19 +547,23 @@ function urlPointsToStatus(url) {
                     // console.log(`The header status ${headers_status} and ${indicated_size}`)
                     //optimizedSizeModel[captured_url] = indicated_size;
                     //noinspection JSIncompatibleTypesComparison;
+
+                    let filetype = filetype_from_headers(response);
+                    // filetype = response.headers.get()
+                    // console.log(filetype);
                     if (headers_status === null) {
 
-                        resolve([false, indicated_size]);
+                        resolve([false, indicated_size, filetype]);
                     } else {
 
-                        resolve([headers_status, indicated_size]);
+                        resolve([headers_status, indicated_size, filetype]);
                     }
                 } else {
-                    resolve([null, null]);
+                    resolve([null, null, null]);
                 }
             },
             (error) => {
-                resolve([null, null]);
+                resolve([null, null, null]);
             }
         )
     });
@@ -582,7 +605,7 @@ function populateUnoptimizedSizeModel(url) {
                 if(response.headers.get("Content-Length") === null){
                     // need to check and potentially refactor this
                     let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
-                    console.log("indicated size (chunked)", indicated_size)
+                    // console.log("indicated size (chunked)", indicated_size)
                     unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search}
                 }else{
                     // for (var pair of response.headers.entries()) {
@@ -591,7 +614,7 @@ function populateUnoptimizedSizeModel(url) {
                     
                     // Active = true;
                     let indicated_size = size_from_headers(response);
-                    console.log("indicated size (non-chunked)", indicated_size)
+                    // console.log("indicated size (non-chunked)", indicated_size)
                     unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search)}
                 }
             } else {

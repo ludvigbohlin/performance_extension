@@ -10,7 +10,8 @@ let vue_data = {
     "ServiceWorker": false,
     "SplashScreen": true,
     "Spinner": false,
-    "imagesCount":0
+    "imagesCount":0,
+    "filetypes": {}
 };
 
 
@@ -89,7 +90,36 @@ function summarizeImagesModel(images_summary_input) {
 
     vue_data["total_size_optimized"] = numberWithSpaces(formatBytes(total_optimized_size));
     vue_data["total_size_unoptimized"] = numberWithSpaces(formatBytes(total_unoptimized_size));
-    vue_data["image_compression"] = imageCompression(total_optimized_size, total_unoptimized_size) + '%';
+    let compression = imageCompression(total_optimized_size, total_unoptimized_size);
+    if (compression >= 0){
+        vue_data["image_compression"] = compression + "%";
+    }else{
+        vue_data["image_compression"] = "0%"; 
+    }
+
+    // calculate filetype percentages
+    let total_files = Object.keys(images_summary_input.optimized).length;
+    console.log(total_files);
+    let filetypes = {};
+    // get file totals
+    console.log(Object.keys(images_summary_input.optimized));
+    for (const file of Object.keys(images_summary_input.optimized)){
+        let filetype = images_summary_input.optimized[file]["filetype"]
+        console.log(filetype);
+        if(!(filetype in filetypes)){
+            filetypes[filetype] = 1;
+        }else{
+            filetypes[filetype] += 1;     
+        }
+    }
+    console.log("fieltypes 1: ",filetypes)
+    for (const filetype of Object.keys(filetypes)){
+        filetypes[filetype] = Math.round((filetypes[filetype] / total_files) * 100) + "%";
+    }
+    console.log("fieltypes 2: ",filetypes)
+
+    vue_data["filetypes"] = filetypes;
+    
     console.log("total optimised: ", vue_data["total_size_optimized"]);
     console.log("total unoptimised: ", vue_data["total_size_unoptimized"]);
     console.log("compression: ", vue_data["image_compression"]);
