@@ -30,7 +30,6 @@ function* iterateOnImages() {
                     populateUnoptimizedSizeModel(originalUrl, optimisationSource);
                     yield [im, originalUrl, optimisedUrl, optimisationSource];
                 }else {
-                    console.log("continuing....");
                     continue;
                 }
             }
@@ -62,7 +61,7 @@ function* iterateOnImages() {
 }
 
 
-function combinedDisplaySelected(){
+function displaySelected(){
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
     for (let [im, originalUrl,optimisedUrl, optimisationSource] of iterateOnImages()) {
@@ -103,8 +102,8 @@ function combinedDisplaySelected(){
                             'filetype': filetype};
                     }
                 }else{
-                    continue;
-                }   
+                    console.log("transfer size null so not pushing: ", originalUrl);
+                }
                 }
                 
         );
@@ -134,26 +133,17 @@ function onChunkedResponseError(err) {
   
     function appendChunks(result) {
       var chunk = decoder.decode(result.value || new Uint8Array, {stream: !result.done});
-    //   console.log('got chunk of', chunk.length, 'bytes')
       chunkSize += chunk.length;
-    //   text += chunk
       count+=1;
-    //   console.log('text so far is', text.length, 'bytes\n');
       if (result.done) {
-        // console.log(response);
-        // console.log('total chunkSize: ', chunkSize)
-        // return text;
         return [chunkSize, response];
       } else {
-            // chunkSize += 4
-            // console.log('recursing')
             return readChunk();
       }
     }
   }
 
 function getServiceWorkerUrl(url){
-    // console.log("service check: ", url)
     var host = url.host;
     domains = Object.keys(serviceWorkerDomains);
     if (host in domains){
@@ -175,20 +165,9 @@ async function refreshSelectedView() {
         if (serviceWorker){
             getServiceWorkerDomains();
         }else{
-            combinedDisplaySelected();
+            displaySelected();
         }
-        // serviceWorker = CheckWorkerProcess();
-
-        // if (serviceWorker){
-        //     getServiceWorkerDomains();
-        // }
-        // combinedDisplaySelected();
-        // if (CheckWorkerProcess()){
-        //     serviceWorkerDisplay();        
-        // }else{
-        // displaySelected();
-        // }
-        // window.setTimeout(refreshSelectedView, 15000);
+        window.setTimeout(refreshSelectedView, 15000);
         window.setTimeout(sendModelSummaries, 3000);
     }
 }
@@ -200,29 +179,17 @@ async function changeToSelected() {
         window.setTimeout(refreshSelectedView, 15000);
     }
     currentView = "selected";
-    // var result = await CheckWorkerProcess();
-    // console.log(result)
 
     serviceWorker =  CheckWorkerProcess();
     if (serviceWorker){
         getServiceWorkerDomains();
     }else{
-        combinedDisplaySelected();
+        displaySelected();
     }
-    // let domains = await getServiceWorkerDomains();
-    // if (CheckWorkerProcess()){
-    //     getServiceWorkerDomains();
-    //     // serviceWorkerDisplay();        
-    // }else{
-    // displaySelected();
-    // }
-    // combinedDisplaySelected();
 }
 
 
 function sendModelSummaries() {
-    // CheckWorkerProcess();
-    // serviceWorker = CheckWorkerProcess();
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
@@ -261,6 +228,7 @@ function removeCustomStyles(im_element) {
         "scbca-webp",
         "scbca-processing",
         "scbca-non-viable",
+        "scbca-serviceworker"
     ];
     for (let token of tokens) {
         im_element.classList.remove(token);
@@ -272,14 +240,23 @@ function changeToOptimized() {
     currentView = 'optimized';
     let images = document.querySelectorAll('*,img.lazyloaded');
     images.forEach((im) => {
+        console.log("optimized");
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
             let doc_hostname = document.location.hostname;
-            if (url.hostname === doc_hostname) {
+            // if serviceWorker image
+            let optimised_image_url = getServiceWorkerUrl(url);
+            if (optimised_image_url !== undefined){
+                // optimisationSource = 'serviceWorker';
                 removeCustomStyles(im);
-                let dataset = im.dataset;
-                if (dataset.hasOwnProperty("scbOriginalLocation")) {
-                    im.src = dataset.scbOriginalLocation;
+                im.src = optimised_image_url;
+            }else{
+                if (url.hostname === doc_hostname) {
+                    removeCustomStyles(im);
+                    let dataset = im.dataset;
+                    if (dataset.hasOwnProperty("scbOriginalLocation")) {
+                        im.src = dataset.scbOriginalLocation;
+                    }
                 }
             }
             ;
@@ -288,11 +265,20 @@ function changeToOptimized() {
             let returned_url = retrieving(im.style['backgroundImage']);
             let url = new URL(returned_url);
             let doc_hostname = document.location.hostname;
-            if (url.hostname === doc_hostname) {
+            
+            // if serviceWorker image
+            let optimised_image_url = getServiceWorkerUrl(url);
+            if (optimised_image_url !== undefined){
+                // optimisationSource = 'serviceWorker';
                 removeCustomStyles(im);
-                let dataset = im.dataset;
-                if (dataset.hasOwnProperty("scbOriginalLocation")) {
-                    im.src = dataset.scbOriginalLocation;
+                im.src = optimised_image_url;
+            }else{
+                if (url.hostname === doc_hostname) {
+                    removeCustomStyles(im);
+                    let dataset = im.dataset;
+                    if (dataset.hasOwnProperty("scbOriginalLocation")) {
+                        im.src = dataset.scbOriginalLocation;
+                    }
                 }
             }
         }
@@ -302,14 +288,10 @@ function changeToOptimized() {
 function retrieving(url) {
     if (url == null || url == undefined || url.length == 0) {
         //console.log("Url is found null")
-        //console.log(url)
         return false;
 
     }
     else {
-        // console.log(url)
-        // console.log(`Before placing ${typeof (url)}`)
-        // console.log(`The length = ${url.length}`)
         url = "https://" + document.location.hostname + url.replace(/^url\(['"](.+)['"]\)/, '$1');
         // PARAMETER FOR IMAGES SELECTION
         var dotIndex = url.lastIndexOf('.');
@@ -338,7 +320,6 @@ function retrieving(url) {
 }
 
 function canUseUrl(url) {
-    // console.log(url);
     if (url === null || url === undefined) {
         return false;
     }
@@ -385,23 +366,14 @@ function isWEBPFile(arrayBuffer) {
  * @param {Response} response
  * @returns {?string}
  */
-function
-
-
-
-    image_opt_status_from_headers(response) {
+function image_opt_status_from_headers(response) {
     let headers_status = null;
-    // console.log(response);
     for (let
         /** @type String[] */
         header_val_arr of response.headers.entries()) {
         let [header_name, header_value] = header_val_arr;
-        // console.log(`The header value ${header_name} and ${header_value}`)
-        // console.log(header_val_arr);
 
         if (header_name === "sc-note") {
-            // console.log("SC-NOTE!!!!!");
-            // Active = true;
             if (header_value.includes("webp0=nv")) {
                 headers_status = 'non-viable';
                 break;
@@ -416,8 +388,6 @@ function
                 // console.log('Open the value')
             }
         }
-
-
     }
     return headers_status;
 }
@@ -457,8 +427,6 @@ function filetype_from_headers(response){
 
 
 function urlPointsToStatus(url, optimisationSource) {
-    // console.log(optimisationSource);
-    // console.log(url);
     let mode = "cors";
     let headers = new Headers({
     });
@@ -488,14 +456,9 @@ function urlPointsToStatus(url, optimisationSource) {
             (response) => {
                 if (response.status === 200) {
                     let headers_status = image_opt_status_from_headers(response);
-                    // for (var pair of response.headers.entries()) {
-                    //     console.log(pair[0]+ ': '+ pair[1]);
-                    //  }
                     let indicated_size = size_from_headers(response);
 
                     let filetype = filetype_from_headers(response);
-                    // filetype = response.headers.get()
-                    // console.log(filetype);
                     if (headers_status === null) {
 
                         resolve([false, indicated_size, filetype]);
@@ -504,10 +467,12 @@ function urlPointsToStatus(url, optimisationSource) {
                         resolve([headers_status, indicated_size, filetype]);
                     }
                 } else {
+                    console.log("optimized else: ", response);
                     resolve([null, null, null]);
                 }
             },
             (error) => {
+                console.log("optimized error: ", response);
                 resolve([null, null, null]);
             }
         )
@@ -517,8 +482,6 @@ function urlPointsToStatus(url, optimisationSource) {
 }
 
 function populateUnoptimizedSizeModel(url, optimisationSource) {
-    // console.log("url: ", url);
-    // console.log("opt source: ", optimisationSource);
     let urlObj = new URL(url)
     let mode = "cors";
     let headers = new Headers({
@@ -546,26 +509,18 @@ function populateUnoptimizedSizeModel(url, optimisationSource) {
             if (response.status === 200) {
                 // check for Content-Length header, if it doesn't exist we must use chunked request
                 if(response.headers.get("Content-Length") === null){
-                    console.log("No content type header!!!");
-                    console.log(response);
+                    // console.log("No content type header!!!");
+                    // console.log(response);
                     // need to check and potentially refactor this
                     let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
-                    // console.log("indicated size (chunked)", indicated_size)
                     let filetype = filetype_from_headers(response);
                     if(filetype.includes("image")){
                         unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search}
                     }
                 }else{
-                    // for (var pair of response.headers.entries()) {
-                    //     console.log(pair[0]+ ': '+ pair[1]);
-                    // }
-                    // Active = true;
                     let indicated_size = size_from_headers(response);
                     let filetype = filetype_from_headers(response);
-                    // console.log(filetype);
-                    // console.log("indicated size (non-chunked)", indicated_size)
                     if(filetype.includes("image")){
-                        console.log(url);
                         unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search)}
                     }
                 }
@@ -593,7 +548,6 @@ function toNoHAPsURL(original_url) {
 
 function originalURLOfImage(im) {
     let dataset = im.dataset;
-    // console.log(dataset);
     if (dataset.hasOwnProperty("scbOriginalLocation")) {
     }
     else if (im.currentSrc) {
@@ -615,11 +569,19 @@ function changeToUnoptimized() {
         if (canUseUrl(from_url)) {
             let url = new URL(im.currentSrc);
             let doc_hostname = document.location.hostname;
-            if (url.hostname === doc_hostname) {
+            // if serviceWorker image
+            let optimised_image_url = getServiceWorkerUrl(url);
+            if (optimised_image_url !== undefined){
                 removeCustomStyles(im);
-                let original_url = originalURLOfImage(im);
-                let use_url = toNoHAPsURL(original_url);
-                im.src = use_url.toString();
+                //shimmercat.cloud -> original url 
+                im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
+            }else{
+                if (url.hostname === doc_hostname) {
+                    removeCustomStyles(im);
+                    let original_url = originalURLOfImage(im);
+                    let use_url = toNoHAPsURL(original_url);
+                    im.src = use_url.toString();
+                }
             }
             ;
         }
@@ -627,14 +589,30 @@ function changeToUnoptimized() {
     });
 }
 
+function getOriginalFromServiceWorkerUrl(url){
+    let urlObj = new URL(url)
+    var host = urlObj.host;
+    console.log(host);
+    domains = Object.values(serviceWorkerDomains);
+    console.log(domains);
+    if (host in domains){
+        const originalDomain = Object.keys(domains).find(key => domains[key] === host);
+        return "https://" + originalDomain + urlObj.pathname + urlObj.search;
+    }else{
+        for (const domain of domains){
+            if (domain.includes(host) || host.includes(domain)){
+                const originalDomain = Object.keys(domains).find(key => domains[key] === host);
+                return "https://" + originalDomain + urlObj.pathname + urlObj.search;
+            }
+        }
+        return undefined
+    }
+}
+
 let shimSelected = "select";
 
 browser.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
-        // console.log(sender.tab ?
-        //             "from a content script:" + sender.tab.url :
-        //             "from the extension");
-        // console.log("Request: ", request);
         if (request.hasOwnProperty("newShim")) {
             if (request.newShim === "select") {
                 changeToSelected();
@@ -646,9 +624,6 @@ browser.runtime.onMessage.addListener(
             shimSelected = request.newShim;
             return { status: "ok" };
         } else if (request.hasOwnProperty("refreshView") && shimSelected === "select") {
-            // Do this once more ? .. this is not the most efficient
-            // way to do stuff, but ...
-            // console.log("refreshView");
             changeToSelected();
         }
 
@@ -664,12 +639,10 @@ CheckWorkerProcess = function () {
             }
         }
     }
-    // serviceWorker = false;
     return false;
 }
 
 function getServiceWorkerDomains(){
-    console.log("test");
     let origin = window.location.origin;
     //get sc script to get serviceWorker domains
     let fetch_sc_script = new Request(
@@ -687,7 +660,6 @@ function getServiceWorkerDomains(){
         }
     }).then(function(data){
         if (data !== undefined){
-            console.log("data: ",data);
             // get string indices for range of switch_domain_for_images object
             var start = data.search("switch_domains_for_images") + 26;
             var end =data.search("}") +1; 
@@ -700,6 +672,6 @@ function getServiceWorkerDomains(){
             serviceWorker = true;
         }
     }).then(function(){
-        combinedDisplaySelected()
+        displaySelected()
     })
 } 
