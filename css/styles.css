@@ -1,7 +1,7 @@
 body {
     background-color: white;
     width: 350px;
-    min-height: 580px !important;
+    min-height: 600px !important;
     font-family: sans-serif;
     margin: 0;
     color: black;
@@ -209,7 +209,7 @@ h1 {
 .text-ul-li {
     font-size: 12px;
     position: relative;
-    top: 90%;
+    top: 70%;
     left: 60px;
 }
 

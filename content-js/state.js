@@ -8,140 +8,81 @@ let serviceWorker = false;
 let serviceWorkerDomains = {};
 function* iterateOnImages() {
     let images = document.querySelectorAll('*,img.lazyloaded');
+    let optimisationSource = '';
     for (let im of images) {
+
         if (canUseUrl(im.currentSrc)) {
-            let url = new URL(im.currentSrc);
+            let originalUrl = new URL(im.currentSrc);
+            let optimisedUrl = '';
             let doc_hostname = document.location.hostname;
 
-            if (!serviceWorker && url.hostname === doc_hostname) {
-                yield [im, url];
+            let optimised_image_url = getServiceWorkerUrl(originalUrl);
+            if (optimised_image_url !== undefined){
+                optimisationSource = 'serviceWorker';
+                optimisedUrl = optimised_image_url;
+                populateUnoptimizedSizeModel(originalUrl, optimisationSource);
+                yield [im, originalUrl, optimisedUrl, optimisationSource];
             }else{
-                yield[im, url];
+                optimisedUrl = originalUrl;
+                if (originalUrl.hostname === doc_hostname) {
+                    optimisationSource = 'origin'
+                    originalUrl = toNoHAPsURL(originalURLOfImage(im));  
+                    populateUnoptimizedSizeModel(originalUrl, optimisationSource);
+                    yield [im, originalUrl, optimisedUrl, optimisationSource];
+                }else {
+                    console.log("continuing....");
+                    continue;
+                }
             }
         }
         if (retrieving(im.style['backgroundImage'])) {
             let returned_url = retrieving(im.style['backgroundImage']);
-            // console.log(`this is from reteriving${returned_url}`)
-            let url = new URL(returned_url);
+            let optimisedUrl = '';
+        
+            let originalUrl = new URL(returned_url);
             let doc_hostname = document.location.hostname;
             
-            if (!serviceWorker && url.hostname === doc_hostname) {
-                yield [im, url];
+            let optimised_image_url = getServiceWorkerUrl(originalUrl);
+            if (optimised_image_url !== undefined){
+                optimisationSource = 'serviceWorker';
+                optimisedUrl = optimised_image_url;
+                populateUnoptimizedSizeModel(originalUrl, optimisationSource);
+                yield [im, originalUrl, optimisedUrl, optimisationSource];
             }else{
-                yield[im, url];
+                optimisedUrl = originalUrl;
+                if (originalUrl.hostname === doc_hostname) {
+                    optimisationSource = 'origin'
+                    originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
+                    populateUnoptimizedSizeModel(originalUrl, optimisationSource); 
+                    yield [im, originalUrl, optimisedUrl, optimisationSource];
+                }else continue;
             }
         }
     }
 }
 
-// function* iterateOnServiceWorkerImages() {
-//     let images = document.querySelectorAll('*,img.lazyloaded');
-//     for (let im of images) {
-//         if (canUseUrl(im.currentSrc)) {
-//             let url = new URL(im.currentSrc);
-//             let doc_hostname = document.location.hostname;
-//             if (url.hostname === doc_hostname) {
-//                 yield [im, url];
-//             }
-//         }
-//         if (retrieving(im.style['backgroundImage'])) {
-//             let returned_url = retrieving(im.style['backgroundImage']);
-//             // console.log(`this is from reteriving${returned_url}`)
-//             let url = new URL(returned_url);
-//             // console.log(`this is from donwnside ${url}`)
-//             let doc_hostname = document.location.hostname;
-//             if (url.hostname === doc_hostname) {
-//                 yield [im, url];
-//             }
-//         }
-//     }
-// }
 
-
-
-
-function displaySelected() {
+function combinedDisplaySelected(){
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
-    for (let [im, url] of iterateOnImages()) {
+    for (let [im, originalUrl,optimisedUrl, optimisationSource] of iterateOnImages()) {
         let h = highlightAsWebp.bind(null, im);
         let g = highlightAsProcessing.bind(null, im);
         let i = highlightAsNonViable.bind(null, im);
-
-        let use_url_for_highlight = originalURLOfImage(im);
-
-        let use_url = toNoHAPsURL(use_url_for_highlight);
-        populateUnoptimizedSizeModel(use_url);
-
-        im.currentSrc = use_url_for_highlight;
-        im.src = use_url_for_highlight;
-
-        urlPointsToStatus(use_url_for_highlight)
-            .then(([status, transfer_size, filetype]) => {
-                removeCustomStyles(im);
-                if (status === "ready") {
-                    im.classList.remove("scbca-gray");
-                    h();
-                } else if (status === "non-viable") {
-                    im.classList.remove("scbca-gray");
-                    i();
-                } else if (status === "in-processing") {
-                    im.classList.remove("scbca-gray");
-                    g();
-                } else {
-                    im.classList.add("scbca-gray");
-                }
-                if (transfer_size !== null) {
-                    if(filetype.includes("image")){
-                    optimizedSizeModel[use_url_for_highlight] = {
-                        'status': status,
-                        'transfer_size': transfer_size,
-                        'pathname': url.pathname + url.search,
-                        'filetype': filetype};
-                    }
-                }
-            });
-    }
-}
-
-function serviceWorkerDisplay() {
-    console.log("serviceWorker running");
-    optimizedSizeModel = {};
-    unoptimizedSizeModel = {};
-    for (let [im, url] of iterateOnImages()) {
-        let h = highlightAsWebp.bind(null, im);
-        let g = highlightAsProcessing.bind(null, im);
-        let i = highlightAsNonViable.bind(null, im);
-
         let b = highlightAsServiceWorkerImage.bind(null, im);
-        let optimised_image_url = getServiceWorkerUrl(url);
 
-        // if domain isn't in serviceWorker domains definition or url is mangled, skip image
-        if (optimised_image_url === undefined){
-            continue;
-        }
-        let use_url_for_highlight = originalURLOfImage(im);
-        populateUnoptimizedSizeModel(use_url_for_highlight);
         
-        
-        im.currentSrc = use_url_for_highlight;
-        im.src = use_url_for_highlight;
+        im.currentSrc = originalUrl;
+        im.src = originalUrl;
 
-        // now we need to make get requests to compute & compare sizes
-        
-
-
-        urlPointsToStatus(optimised_image_url)
+        urlPointsToStatus(optimisedUrl, optimisationSource)
             .then(([status, transfer_size, filetype]) => {
-                // console.log("status: ", status);
-                // console.log("transfer_size: ", transfer_size);
                 removeCustomStyles(im);
-                // if serviceWorker processed then we colour it blue for now
-                if(serviceWorker){
+                if(optimisationSource == 'serviceWorker'){
                     im.classList.remove("scbca-gray"); 
                     b()
-                }else{
-                if (status === "ready") {
+                }
+                else if (status === "ready") {
                     im.classList.remove("scbca-gray");
                     h();
                 } else if (status === "non-viable") {
@@ -153,28 +94,24 @@ function serviceWorkerDisplay() {
                 } else {
                     im.classList.add("scbca-gray");
                 }    
-            }
                 if (transfer_size !== null) {
-                    // Active = true;
                     if(filetype.includes("image")){
-                    optimizedSizeModel[optimised_image_url] = {
-                        'status': status,
-                        'transfer_size': transfer_size,
-                        'pathname': url.pathname + url.search,
-                        'filetype': filetype};
+                        optimizedSizeModel[optimisedUrl] = {
+                            'status': status,
+                            'transfer_size': transfer_size,
+                            'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                            'filetype': filetype};
                     }
-                }
+                }else{
+                    continue;
+                }   
                 }
                 
         );
-    }
-    // console.log("optimised: ",optimizedSizeModel);
-    // console.log("unoptimised: ", unoptimizedSizeModel);
+    } 
 }
 
 function onChunkedResponseComplete([result, response]) {
-    // console.log(response);
-    // console.log('all done!', result)
     return result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT);
   }
   
@@ -216,7 +153,7 @@ function onChunkedResponseError(err) {
   }
 
 function getServiceWorkerUrl(url){
-    // console.log(url)
+    // console.log("service check: ", url)
     var host = url.host;
     domains = Object.keys(serviceWorkerDomains);
     if (host in domains){
@@ -231,22 +168,26 @@ function getServiceWorkerUrl(url){
     }
 }
 
-function optimisedURLofImage(im){
-    //lookup image src in serviceWorkerDomains to get correct cloud domain
-    // let cloud_img_url =  
-
-    // make get request to cloud domain
-
-
-}
-
-function refreshSelectedView() {
+async function refreshSelectedView() {
+    let domains = await getServiceWorkerDomains();
     if (currentView === "selected") {
-        if (CheckWorkerProcess()){
-            serviceWorkerDisplay();        
+        serviceWorker =  CheckWorkerProcess();
+        if (serviceWorker){
+            getServiceWorkerDomains();
         }else{
-        displaySelected();
+            combinedDisplaySelected();
         }
+        // serviceWorker = CheckWorkerProcess();
+
+        // if (serviceWorker){
+        //     getServiceWorkerDomains();
+        // }
+        // combinedDisplaySelected();
+        // if (CheckWorkerProcess()){
+        //     serviceWorkerDisplay();        
+        // }else{
+        // displaySelected();
+        // }
         // window.setTimeout(refreshSelectedView, 15000);
         window.setTimeout(sendModelSummaries, 3000);
     }
@@ -261,12 +202,21 @@ async function changeToSelected() {
     currentView = "selected";
     // var result = await CheckWorkerProcess();
     // console.log(result)
-    if (CheckWorkerProcess()){
+
+    serviceWorker =  CheckWorkerProcess();
+    if (serviceWorker){
         getServiceWorkerDomains();
-        // serviceWorkerDisplay();        
     }else{
-    displaySelected();
+        combinedDisplaySelected();
     }
+    // let domains = await getServiceWorkerDomains();
+    // if (CheckWorkerProcess()){
+    //     getServiceWorkerDomains();
+    //     // serviceWorkerDisplay();        
+    // }else{
+    // displaySelected();
+    // }
+    // combinedDisplaySelected();
 }
 
 
@@ -388,6 +338,7 @@ function retrieving(url) {
 }
 
 function canUseUrl(url) {
+    // console.log(url);
     if (url === null || url === undefined) {
         return false;
     }
@@ -468,8 +419,6 @@ function
 
 
     }
-
-
     return headers_status;
 }
 
@@ -507,17 +456,19 @@ function filetype_from_headers(response){
 }
 
 
-function urlPointsToStatus(url) {
+function urlPointsToStatus(url, optimisationSource) {
+    // console.log(optimisationSource);
     // console.log(url);
-    let mode = "same-origin";
+    let mode = "cors";
     let headers = new Headers({
-        "cache-control": "no-cache",
-        "accept": "image/webp,image/apng,image/*",
-        "accept-encoding": "gzip, deflate, br",
     });
-    if(serviceWorker){
-        mode = "cors";
-        headers = {"accept": "image/webp,image/apng,image/*",}
+
+    if(optimisationSource === 'origin'){
+        mode = "same-origin";
+        headers = new Headers({
+            "cache-control": "no-cache",
+            "accept": "image/webp,image/apng,image/*",
+            "accept-encoding": "gzip, deflate, br",});
     }
 
     let fetch_request = new Request(
@@ -536,17 +487,11 @@ function urlPointsToStatus(url) {
         prom.then(
             (response) => {
                 if (response.status === 200) {
-                    // console.log("This is the response of header")
-                    // console.log(response.headers.keys())
                     let headers_status = image_opt_status_from_headers(response);
                     // for (var pair of response.headers.entries()) {
                     //     console.log(pair[0]+ ': '+ pair[1]);
                     //  }
-                    // console.log(headers_status);
                     let indicated_size = size_from_headers(response);
-                    // console.log(`The header status ${headers_status} and ${indicated_size}`)
-                    //optimizedSizeModel[captured_url] = indicated_size;
-                    //noinspection JSIncompatibleTypesComparison;
 
                     let filetype = filetype_from_headers(response);
                     // filetype = response.headers.get()
@@ -571,22 +516,20 @@ function urlPointsToStatus(url) {
     return resultP;
 }
 
-function populateUnoptimizedSizeModel(url) {
+function populateUnoptimizedSizeModel(url, optimisationSource) {
+    // console.log("url: ", url);
+    // console.log("opt source: ", optimisationSource);
     let urlObj = new URL(url)
-    let mode = "same-origin";
+    let mode = "cors";
     let headers = new Headers({
-        "cache-control": "no-cache",
-        "accept": "image/jpeg,image/apng,image/*",
-        "accept-encoding": "gzip, deflate, br",
     });
-    if(serviceWorker){
-        mode = "cors";
-        headers = {
-            "accept": "image/jpeg,image/apng,image/*",
-            "accept-encoding": "gzip, deflate, br",
-    };
+    if(optimisationSource === 'origin'){
+        mode = "same-origin";
+        headers = new Headers({
+            "cache-control": "no-cache",
+            "accept": "image/webp,image/apng,image/*",
+            "accept-encoding": "gzip, deflate, br",});
     }
-
     let fetch_request = new Request(
         url,
         {
@@ -603,19 +546,28 @@ function populateUnoptimizedSizeModel(url) {
             if (response.status === 200) {
                 // check for Content-Length header, if it doesn't exist we must use chunked request
                 if(response.headers.get("Content-Length") === null){
+                    console.log("No content type header!!!");
+                    console.log(response);
                     // need to check and potentially refactor this
                     let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
                     // console.log("indicated size (chunked)", indicated_size)
-                    unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search}
+                    let filetype = filetype_from_headers(response);
+                    if(filetype.includes("image")){
+                        unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search}
+                    }
                 }else{
                     // for (var pair of response.headers.entries()) {
                     //     console.log(pair[0]+ ': '+ pair[1]);
                     // }
-                    
                     // Active = true;
                     let indicated_size = size_from_headers(response);
+                    let filetype = filetype_from_headers(response);
+                    // console.log(filetype);
                     // console.log("indicated size (non-chunked)", indicated_size)
-                    unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search)}
+                    if(filetype.includes("image")){
+                        console.log(url);
+                        unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search)}
+                    }
                 }
             } else {
                 console.log(response);
@@ -712,11 +664,12 @@ CheckWorkerProcess = function () {
             }
         }
     }
-    serviceWorker = false;
+    // serviceWorker = false;
     return false;
 }
 
 function getServiceWorkerDomains(){
+    console.log("test");
     let origin = window.location.origin;
     //get sc script to get serviceWorker domains
     let fetch_sc_script = new Request(
@@ -727,17 +680,26 @@ function getServiceWorkerDomains(){
         
     fetch(fetch_sc_script)
     .then(function(res){
-        return res.text()
+        if (res.status === 200){
+            return res.text()
+        } else{
+            return undefined;
+        }
     }).then(function(data){
-        // get string indices for range of switch_domain_for_images object
-        var start = data.search("switch_domains_for_images") + 26;
-        var end =data.search("}") +1; 
+        if (data !== undefined){
+            console.log("data: ",data);
+            // get string indices for range of switch_domain_for_images object
+            var start = data.search("switch_domains_for_images") + 26;
+            var end =data.search("}") +1; 
 
-        // create substring
-        var serviceWorkerDomainsObjString = data.substring(start, end);
-        // parse as JSON & save in global variable
-        serviceWorkerDomains = JSON.parse(serviceWorkerDomainsObjString);
-        console.log("serviceWorkerDomains: ",serviceWorkerDomains);
-        serviceWorker = true;
-    }).then(function(){serviceWorkerDisplay()})
+            // create substring
+            var serviceWorkerDomainsObjString = data.substring(start, end);
+            // parse as JSON & save in global variable
+            serviceWorkerDomains = JSON.parse(serviceWorkerDomainsObjString);
+            console.log("serviceWorkerDomains: ",serviceWorkerDomains);
+            serviceWorker = true;
+        }
+    }).then(function(){
+        combinedDisplaySelected()
+    })
 } 
