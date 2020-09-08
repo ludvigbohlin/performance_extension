@@ -473,7 +473,6 @@ function urlPointsToStatus(url, optimisationSource) {
             (response) => {
                 if (response.status === 200) {
                     
-                    console.log(response.headers.get("content-type"));
                     // get image status
                     let headers_status = image_opt_status_from_headers(response);
                     // get image size

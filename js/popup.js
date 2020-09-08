@@ -119,8 +119,6 @@ function summarizeImagesModel(images_summary_input) {
         let num = filetype_data["optimised"][filetype].toString() 
         filetype_data["optimised"][filetype] = num + " (" + Math.round((filetype_data["optimised"][filetype] / total_files) * 100) + "%)"; 
     }
-    console.log("filetypes: ", filetypes);
-    console.log("filetype data: ",filetype_data);
 
     vue_data["filetype_data"] = filetype_data;
     vue_data["filetypes"] = filetypes
