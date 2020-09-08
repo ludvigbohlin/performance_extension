@@ -20,6 +20,21 @@
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://fonts.googleapis.com/css?family=Tomorrow|Share+Tech+Mono&display=swap" rel="stylesheet">
     <script src="js/vue.js"></script>
+    <script
+    src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+    integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+    crossorigin="anonymous"
+  ></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+    integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+    crossorigin="anonymous"
+  ></script>
+  <script
+  src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+  integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+  crossorigin="anonymous"
+></script>
 </head>
 
 <body>
@@ -56,8 +71,34 @@
                 <input class="shim-radio" type="radio" id="select" name="shim-type" value="select" checked
                     v-model="shim">
                 <label for="select">Selection</label>
+                <button id="selection-popover" class="tooltip-btn" data-html="true" data-toggle="popover" data-placement="bottom" 
+                data-content="<div id='popover-div' class='text-ul-li'>
+                    <span>
+                        When you show 'Selection' images are displayed as:
+                    </span>
+                    <ul class='list-ul'>
+                        <li>Sepia images: optimized</li>
+                        <li>Inverted images: Not possible to both
+                            <br>compress and keep quality
+                        </li>
+                        <li>Pulsating images: Image is being pro-
+                            <br>cessed
+                        </li>
+                        <li>Blue images: Image has been pro-
+                            <br>cessed by the ServiceWorker
+                        </li>
+                    </ul>
+                </div>">
+                <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-info-circle" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588z"/>
+                    <circle cx="8" cy="4.5" r="1"/>
+                  </svg>
+                </button>
             </div>
         </div>
+
+        
         <div v-if="Spinner">
             <img class="spinner" src="/icons/spinner.svg" alt="Girl in a jacket" width="500" height="600">
         </div>
@@ -65,7 +106,7 @@
 
             <div class="stats-area" v-if="total_size_optimized !== '' && Active">
                 <div class="info info-grid">
-                    <div class="text-ul-li">
+                    <!-- <div class="text-ul-li">
                         <span>
                             When you show "Selection", images are dis-
                             <br>played as:
@@ -82,7 +123,7 @@
                                 <br>cessed by the ServiceWorker
                             </li>
                         </ul>
-                    </div>
+                    </div> -->
                     <div class="label-align">
                         <div class="sublabel div-1">
                             <span> Image Compression:</span>

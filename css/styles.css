@@ -283,7 +283,7 @@ ul li::before {
 }
 .ImagesCount{
     text-align: center;
-    margin-top: 31%;
+    margin-top: 40%;
     left: 60px
 }
 
@@ -310,3 +310,23 @@ table{
 table, th, td {
     border: 2px solid black;
   }
+
+.tooltip-btn{
+    background-color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#popover-div{
+    background-color: white;
+    border: 2px solid black;
+    padding: 2%;
+    margin-right: 5%;
+}
+.label-align{
+    margin-top: 5%;
+}
+
+.exportcsvdiv{
+    margin-top: 5%;
+}
