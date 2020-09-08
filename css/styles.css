@@ -1,11 +1,15 @@
 body {
     background-color: white;
     width: 350px;
-    height: 550px !important;
+    min-height: 600px !important;
     font-family: sans-serif;
     margin: 0;
     color: black;
     font-size: 14px;
+}
+
+#app-root{
+    margin-bottom: 15%;
 }
 
 .Message {
@@ -170,6 +174,7 @@ h1 {
     background: darkslategrey;
     position: relative;
     top: 5px;
+    margin-bottom: 20px;
 }
 
 .btn:hover {
@@ -204,7 +209,7 @@ h1 {
 .text-ul-li {
     font-size: 12px;
     position: relative;
-    top: 90%;
+    top: 70%;
     left: 60px;
 }
 
@@ -279,7 +284,19 @@ ul li::before {
 .ImagesCount{
     text-align: center;
     margin-top: 31%;
+    left: 60px
+}
+
+.filetypes-count-div{
+    text-align: center;
+    margin-top: 2%;
+    left: 60px;
 }
 .btn-top {
     top: 20px;
+    margin-bottom: 20px;
+}
+
+.bold{
+    font-weight: 600;
 }

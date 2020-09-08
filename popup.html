@@ -31,17 +31,17 @@
         </header>
     </div>
     <div id="app-root">
-        <div v-if="ServiceWorker==true&&SplashScreen==false" class="Message">
+        <!-- <div v-if="ServiceWorker==true&&SplashScreen==false" class="Message">
             <label class="ErrorMessage">
                 This website uses ShimmerCat Service Worker.
             </label>
-        </div>
+        </div> -->
         <div v-if="!Active && !ServiceWorker&&SplashScreen==false" class="Message">
             <label class="ErrorMessage">
                 This Website is not served by ShimmerCat.
             </label>
         </div>
-        <div class="radiobutton-area" v-if="Active && !ServiceWorker &&SplashScreen==false">
+        <div class="radiobutton-area" v-if="Active &&SplashScreen==false">
             <p class="p-position">Show</p>
             <div class="r-position t-1">
                 <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized" v-model="shim">
@@ -78,6 +78,9 @@
                             <li>Pulsating images: Image is being pro-
                                 <br>cessed
                             </li>
+                            <li>Blue images: Image has been pro-
+                                <br>cessed by the ServiceWorker
+                            </li>
                         </ul>
                     </div>
                     <div class="label-align">
@@ -85,6 +88,7 @@
                             <span> Image Compression:</span>
                         </div>
                         <div class="amount div-2">
+                            <!-- <span v-if="image_compression < 0">0%</span> -->
                             <span>{{image_compression}}</span>
                         </div>
                         <div class="sublabel div-3">
@@ -102,7 +106,18 @@
                     </div>
                 </div>
                 <div class="ImagesCount">
-                    <label>Images Detected: {{imagesCount}}</label>
+                    <label><span class="bold">Images Detected:</span> {{imagesCount}}</label>
+                </div>
+                <div class="filetypes-count-div">
+                    <span class="bold">Filetypes:</span>
+                    <div v-for="(value, name) in filetypes">
+                        - {{ name }}: {{ value }}
+                      </div>
+                    <!-- <ul v-if="Object.keys(filetypes).length !== 0" id="example-1">
+                        <li v-for="(value, name) in filetypes">
+                            {{ name }}: {{ value }}
+                        </li>
+                      </ul> -->
                 </div>
                 <div class="exportcsvdiv">
                     <a href="download.html" class="btn btn-top">Export to CSV</a>

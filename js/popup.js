@@ -1,3 +1,4 @@
+// default value to be displayed in the popup menu on startup.
 let vue_data = {
     "good_images": [],
     "bad_images": [],
@@ -10,47 +11,22 @@ let vue_data = {
     "ServiceWorker": false,
     "SplashScreen": true,
     "Spinner": false,
-    "imagesCount":0
+    "imagesCount":0,
+    "filetypes": {}
 };
 
-
-// function send_refresh() {
-//
-//   let resultP = new Promise(
-//     (complete, reject) =>
-//     {
-//       browser.tabs.query({active: true, currentWindow: true})
-//         .then(
-//           (tabs) => {
-//             if (tabs.length > 0)
-//               return browser.tabs.sendMessage(tabs[0].id, {refreshView: true});
-//           })
-//         .then((response) => {
-//             console.log(response);
-//             complete();
-//           });
-//     }
-//   );
-//
-//   return resultP;
-// }
-
-
+// function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    //console.log(request);
     if (sender.tab && sender.tab.active) {
-        console.log("Message from active tab");
         localStorage.setItem('clog', JSON.stringify(request));
         if (request.active === false) {
             vue_data["Active"] = false;
         }
         vue_data["imagesCount"]=Object.keys(request.optimized).length;
-        //console.log("count: "+Object.keys(request.optmized).length);
         vue_data["ServiceWorker"] = request.serviceWorker;
         summarizeImagesModel(request);
         vue_data["Spinner"] = false;
     }
-    //console.log("From popup: ", sender, request);
 });
 
 /**
@@ -73,31 +49,54 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
  * @param {ImagesSummaryInput} images_summary_input
  */
 function summarizeImagesModel(images_summary_input) {
+    // calculate total size of all original images found
     let total_unoptimized_size = 0.0;
     for (let im_url of Object.getOwnPropertyNames(images_summary_input.unoptimized)) {
-        total_unoptimized_size += images_summary_input.unoptimized[im_url];
+        total_unoptimized_size += images_summary_input.unoptimized[im_url].transfer_size;
     }
 
+    // calculate total size of all optimized images found
     let total_optimized_size = 0.0;
     for (let im_url of Object.getOwnPropertyNames(images_summary_input.optimized)) {
-        console.log("From the total optimised function ")
-        console.log(im_url)
-        console.log(images_summary_input.optimized[im_url].transfer_size)
         total_optimized_size += images_summary_input.optimized[im_url].transfer_size;
     }
 
     vue_data["total_size_optimized"] = numberWithSpaces(formatBytes(total_optimized_size));
     vue_data["total_size_unoptimized"] = numberWithSpaces(formatBytes(total_unoptimized_size));
-    vue_data["image_compression"] = imageCompression(total_optimized_size, total_unoptimized_size) + '%';
+    let compression = imageCompression(total_optimized_size, total_unoptimized_size);
+    if (compression >= 0){
+        vue_data["image_compression"] = compression + "%";
+    }else{
+        vue_data["image_compression"] = "0%"; 
+    }
 
+    let total_files = Object.keys(images_summary_input.optimized).length;
+    let filetypes = {};
+    // get file totals
+    for (const file of Object.keys(images_summary_input.optimized)){
+        let filetype = images_summary_input.optimized[file]["filetype"]
+        if(!(filetype in filetypes)){
+            filetypes[filetype] = 1;
+        }else{
+            filetypes[filetype] += 1;     
+        }
+    }
+    // get filetype percentages
+    for (const filetype of Object.keys(filetypes)){
+        filetypes[filetype] = Math.round((filetypes[filetype] / total_files) * 100) + "%";
+    }
+
+    vue_data["filetypes"] = filetypes;
 }
 
+// function that formats numbers
 function numberWithSpaces(x) {
     let x_str = x.toString();
     let val = x_str.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
     return val;
 }
 
+// function to calculate compression percentage
 function imageCompression(total_optimized, total_original) {
     let result = (((total_original - total_optimized) / total_original) * 100).toFixed(1)
     return result
@@ -106,6 +105,8 @@ function imageCompression(total_optimized, total_original) {
 function myVersion() {
     document.getElementById("version").innerText="v"+ chrome.app.getDetails().version;
 }
+
+// function that restores data 
 function restoreData(vue_data) {
     let resultP = new Promise((resolve, reject) => {
         browser.storage.sync.get(["model_data"]).then((items) => {
@@ -121,6 +122,8 @@ function restoreData(vue_data) {
     return resultP;
 
 }
+
+// function to format bytes to be more readable
 function formatBytes(bytes, decimals = 2) {
     if (bytes === 0) return '0 Bytes';
 
@@ -133,6 +136,7 @@ function formatBytes(bytes, decimals = 2) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+// vue initialization
 window.vue_body_app = new Vue({
     data: vue_data,
     el: "#app-root",
@@ -147,16 +151,18 @@ window.vue_body_app = new Vue({
                         return browser.tabs.sendMessage(tabs[0].id, { newShim: to_what });
                     })
                 .then((response) => {
-                    console.log(response);
+                    // console.log(response);
                 });
             this.saveData();
         },
+        // function to save data
         saveData: function () {
             let the_data = this.$data;
             browser.storage.sync.set({
                 "model_data": the_data
             });
         },
+        // function to change state of splashscreen
         SplashScreenChange: function () {
 
             vue_data["SplashScreen"] = false;
@@ -168,7 +174,6 @@ window.vue_body_app = new Vue({
 
     watch: {
         shim: function (new_shim, old_shim) {
-            console.log("Shim changed to ", new_shim);
             this.changeShim(new_shim);
         }
     }

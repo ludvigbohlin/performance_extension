@@ -102,3 +102,8 @@
 .scbca-non-viable:not(.scbca-good):not(.scbca-bad) {
   filter: invert();
 }
+
+.scbca-serviceworker:not(.scbca-good):not(.scbca-bad){
+  filter: sepia(100%) hue-rotate(190deg) saturate(500%);
+  outline: solid #0066CC 4px;
+}
