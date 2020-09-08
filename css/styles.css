@@ -290,7 +290,6 @@ ul li::before {
 .filetypes-count-div{
     text-align: center;
     margin-top: 2%;
-    left: 60px;
 }
 .btn-top {
     top: 20px;
@@ -300,3 +299,14 @@ ul li::before {
 .bold{
     font-weight: 600;
 }
+
+table{
+    margin-left: auto;
+    margin-right: auto;
+    border-collapse: collapse;
+
+}
+
+table, th, td {
+    border: 2px solid black;
+  }

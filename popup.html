@@ -109,15 +109,18 @@
                     <label><span class="bold">Images Detected:</span> {{imagesCount}}</label>
                 </div>
                 <div class="filetypes-count-div">
-                    <span class="bold">Filetypes:</span>
-                    <div v-for="(value, name) in filetypes">
-                        - {{ name }}: {{ value }}
-                      </div>
-                    <!-- <ul v-if="Object.keys(filetypes).length !== 0" id="example-1">
-                        <li v-for="(value, name) in filetypes">
-                            {{ name }}: {{ value }}
-                        </li>
-                      </ul> -->
+                    <table>
+                        <tr>
+                            <th>Filetype</th>
+                            <th>Origin</th>
+                            <th>Optimised</th>
+                        </tr>
+                            <tr v-for="(value, name, index) in filetypes['origin']">
+                                <td >{{name}}</td>
+                                <td >{{value}}</td>
+                                <td >{{getOptimisedFiletype(name)}}</td>
+                            </tr>
+                    </table>
                 </div>
                 <div class="exportcsvdiv">
                     <a href="download.html" class="btn btn-top">Export to CSV</a>

@@ -535,7 +535,7 @@ function populateUnoptimizedSizeModel(url, optimisationSource) {
                     let filetype = filetype_from_headers(response);
                     // filter out erroneous text/html responses that are sometimes picked up
                     if(filetype.includes("image")){
-                        unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search}
+                        unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search, "filetype": filetype}
                     }
                 // else if Content-length header readily available
                 }else{
@@ -545,7 +545,7 @@ function populateUnoptimizedSizeModel(url, optimisationSource) {
                     let filetype = filetype_from_headers(response);
                     // filter out erroneous text/html responses that are sometimes picked up
                     if(filetype.includes("image")){
-                        unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search)}
+                        unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search), "filetype": filetype}
                     }
                 }
             } else {

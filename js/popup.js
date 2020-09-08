@@ -71,21 +71,41 @@ function summarizeImagesModel(images_summary_input) {
     }
 
     let total_files = Object.keys(images_summary_input.optimized).length;
-    let filetypes = {};
-    // get file totals
-    for (const file of Object.keys(images_summary_input.optimized)){
-        let filetype = images_summary_input.optimized[file]["filetype"]
-        if(!(filetype in filetypes)){
-            filetypes[filetype] = 1;
+    let filetypes = {
+        origin: {},
+        optimised: {}
+    };
+    // get origin file totals
+    for (const file of Object.keys(images_summary_input.unoptimized)){
+        let filetype = images_summary_input.unoptimized[file]["filetype"];
+        if(!(filetype in filetypes["origin"])){
+            filetypes["origin"][filetype] = 1;
         }else{
-            filetypes[filetype] += 1;     
+            filetypes["origin"][filetype] += 1;     
         }
     }
-    // get filetype percentages
-    for (const filetype of Object.keys(filetypes)){
-        filetypes[filetype] = Math.round((filetypes[filetype] / total_files) * 100) + "%";
+    // get optimised file totals
+    for (const file of Object.keys(images_summary_input.optimized)){
+        let filetype = images_summary_input.optimized[file]["filetype"]
+        if(!(filetype in filetypes["optimised"])){
+            filetypes["optimised"][filetype] = 1;
+        }else{
+            filetypes["optimised"][filetype] += 1;     
+        }
     }
 
+    console.log(filetypes);
+
+    // get origin filetype percentages
+    for (const filetype of Object.keys(filetypes["origin"])){
+        let num = filetypes["origin"][filetype].toString() 
+        filetypes["origin"][filetype] = num + " (" + Math.round((filetypes["origin"][filetype] / total_files) * 100) + "%)"; 
+    }
+
+    for (const filetype of Object.keys(filetypes["optimised"])){
+        let num = filetypes["optimised"][filetype].toString() 
+        filetypes["optimised"][filetype] = num + " (" + Math.round((filetypes["optimised"][filetype] / total_files) * 100) + "%)"; 
+    }
     vue_data["filetypes"] = filetypes;
 }
 
@@ -169,6 +189,9 @@ window.vue_body_app = new Vue({
             vue_data["Spinner"] = true;
             this.changeShim("select");
 
+        },
+        getOptimisedFiletype: function(index){
+            return vue_data["filetypes"]["optimised"][index]
         }
     },
 
