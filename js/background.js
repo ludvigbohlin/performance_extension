@@ -1,5 +1,6 @@
-let urls = [];
-let images = {};
+// let urls = [];
+let optimisedImages = {};
+let originalImages = {};
 
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -22,8 +23,11 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   }
   if(request.command === 'imageTransfer'){
     // console.log("received url in background");
-    // urls.push(request.url);
-    images[request.url] = request.image;
+    if(request.kind === 'original'){
+      originalImages[request.url] = request.image;
+    }else{
+      optimisedImages[request.url] = request.image; 
+    }
 
   }
 });
@@ -153,38 +157,43 @@ install_context_menus();
 chrome.webRequest.onCompleted.addListener(function(details){
   // console.log(details.url);
   // console.log(urls);
-  if (details.url in images){
-    // console.log(details.url);
+  if (details.url in originalImages){
+    console.log(details.url);
     // console.log(details.responseHeaders);
-
     browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
                 if (tabs.length > 0) {
                   return browser.tabs.sendMessage(tabs[0].id, { 
                     headers: details.responseHeaders,
-                    image : images[details.url],
-                    url : details.url });
-                  // delete images[details.url]; 
-                    // .then(
-                    //   () => { 
-                    //     delete images[details.url];
-                    //     console.log("message sent to content script");
-                    //     // urls = urls.filter(v => v !== details.url);  
-                    //   },
-                    //   () => { 
-                    //       // console.error("message was not sent! ");  
-                    //   }
-                    // );
+                    image : originalImages[details.url],
+                    url : details.url,
+                    kind : "original" });
                 }
               })
               .then(()=>{
-                delete images[details.url];  
+                delete optimisedImages[details.url];  
               })
-            // .then((response) => {
-            //   // console.log(response);
-            // });
   }
+  if (details.url in optimisedImages){
+    console.log(details.url);
+    // console.log(details.responseHeaders);
+    browser.tabs.query({ active: true, currentWindow: true })
+            .then(
+              (tabs) => {
+                if (tabs.length > 0) {
+                  return browser.tabs.sendMessage(tabs[0].id, { 
+                    headers: details.responseHeaders,
+                    image : optimisedImages[details.url],
+                    url : details.url,
+                    kind : "optimised" });
+                }
+              })
+              .then(()=>{
+                delete optimisedImages[details.url];  
+              })
+  }
+
 },
 {urls: ["<all_urls>"]},
 ["responseHeaders"]);

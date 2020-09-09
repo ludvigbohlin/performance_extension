@@ -24,7 +24,7 @@ function* iterateOnImages() {
             if (optimised_image_url !== undefined){
                 optimisationSource = 'serviceWorker';
                 optimisedUrl = optimised_image_url;
-                populateUnoptimizedSizeModel(originalUrl, optimisationSource);
+                populateUnoptimizedSizeModel(originalUrl, optimisationSource, im.src);
                 yield [im, originalUrl, optimisedUrl, optimisationSource];
             // else image optimisation is processed via origin
             }else{
@@ -34,7 +34,7 @@ function* iterateOnImages() {
 
                     // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im));  
-                    populateUnoptimizedSizeModel(originalUrl, optimisationSource);
+                    populateUnoptimizedSizeModel(originalUrl, optimisationSource, im.src);
                     yield [im, originalUrl, optimisedUrl, optimisationSource];
                 }else {
                     continue;
@@ -53,7 +53,7 @@ function* iterateOnImages() {
             if (optimised_image_url !== undefined){
                 optimisationSource = 'serviceWorker';
                 optimisedUrl = optimised_image_url;
-                populateUnoptimizedSizeModel(originalUrl, optimisationSource);
+                populateUnoptimizedSizeModel(originalUrl, optimisationSource, im.src);
                 yield [im, originalUrl, optimisedUrl, optimisationSource];
             // else image optimisation is processed via origin
             }else{
@@ -63,7 +63,7 @@ function* iterateOnImages() {
 
                     // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
-                    populateUnoptimizedSizeModel(originalUrl, optimisationSource); 
+                    populateUnoptimizedSizeModel(originalUrl, optimisationSource, im.src); 
                     yield [im, originalUrl, optimisedUrl, optimisationSource];
                 // image compression not supported for the domain as it is not defined in serviceWorker and not the root url of the site
                 }else continue;
@@ -535,7 +535,8 @@ function urlPointsToStatus(url, optimisationSource, im) {
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
-        image: im
+        image: im,
+        kind: "optimised"
     }).then(
         () => { console.log("message sent")},
         () => { },
@@ -621,8 +622,13 @@ function urlPointsToStatus(url, optimisationSource, im) {
 
 }
 
-function handleImageHeadersCallback(data,url, imageSource){
+function handleImageHeadersCallback(data,url, imageSource, kind){
     // console.log(data);
+    // let h = highlightAsWebp.bind(null, im);
+    // let g = highlightAsProcessing.bind(null, im);
+    // let i = highlightAsNonViable.bind(null, im);
+    // let b = highlightAsServiceWorkerImage.bind(null, im);
+
     let status = data.status;
     let transfer_size = data.size;
     let filetype = data.filetype;
@@ -649,19 +655,68 @@ function handleImageHeadersCallback(data,url, imageSource){
     if (transfer_size !== null) {
         if(filetype.includes("image")){
             // add image to optimised images object ready for compression computation in popup.js
-            optimizedSizeModel[url] = {
-                'status': status,
-                'transfer_size': transfer_size,
-                // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
-                'filetype': filetype};
-            console.log(optimizedSizeModel);
+            if (kind == 'original'){
+                unoptimizedSizeModel[url] = {
+                    'status': status,
+                    'transfer_size': transfer_size,
+                    // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                    'filetype': filetype};
+                // console.log(un);
+            }
+            if (kind == 'optimised'){
+                optimizedSizeModel[url] = {
+                    'status': status,
+                    'transfer_size': transfer_size,
+                    // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                    'filetype': filetype};
+                // console.log(optimizedSizeModel);
+            }
         }
     }else{
+        let mode = "cors";
+        let headers = new Headers({
+        });
+    
+        let fetch_request = new Request(
+            url,
+            {
+                "headers": new Headers(),
+                "method": "GET",
+                "mode": mode,
+                "cache": "no-store"
+            });
+        
+        
+        fetch(fetch_request)
+        .then(async function (response){
+            if (response.status === 200) {
+                transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
+
+                if(filetype.includes("image")){
+                    if (kind == 'original'){
+                        unoptimizedSizeModel[url] = {
+                            'status': status,
+                            'transfer_size': transfer_size,
+                            // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                            'filetype': filetype};
+                        // console.log(un);
+                    }
+                    if (kind == 'optimised'){
+                        optimizedSizeModel[url] = {
+                            'status': status,
+                            'transfer_size': transfer_size,
+                            // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                            'filetype': filetype};
+                    }
+                }
+            } 
+
+        })
     }
 }
 
 // function that makes a request to the original url of each image which then gives status information and file size
-function populateUnoptimizedSizeModel(url, optimisationSource) {
+function populateUnoptimizedSizeModel(url, optimisationSource, im) {
     let urlObj = new URL(url)
     let mode = "cors";
     let headers = new Headers({
@@ -684,37 +739,62 @@ function populateUnoptimizedSizeModel(url, optimisationSource) {
 
     let prom = fetch(fetch_request);
 
-    prom.then(
-        async (response) => {
-            if (response.status === 200) {
-                // check for Content-Length header, if it doesn't exist we must use chunked request
-                if(response.headers.get("Content-Length") === null){
-                    // get image size
-                    let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
-                    // get image filetype
-                    let filetype = filetype_from_headers(response);
-                    // filter out erroneous text/html responses that are sometimes picked up
-                    if(filetype.includes("image")){
-                        unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search, "filetype": filetype}
-                    }
-                // else if Content-length header readily available
-                }else{
-                    // get image size
-                    let indicated_size = size_from_headers(response);
-                    // get image filetype
-                    let filetype = filetype_from_headers(response);
-                    // filter out erroneous text/html responses that are sometimes picked up
-                    if(filetype.includes("image")){
-                        unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search), "filetype": filetype}
-                    }
-                }
-            } else {
-            }
-        },
-        (error) => {
-            console.error(error);
-        }
+
+    // notify background.js of the url we want to monitor
+    
+    // console.log("sending: ", url);
+    browser.runtime.sendMessage({
+        command: "imageTransfer",
+        url: url,
+        image: im,
+        kind: "original"
+    }).then(
+        () => { console.log("message sent")},
+        () => { },
     );
+
+    prom.then(
+        (response) => {
+            if (response.status === 200) {
+            }
+            else {
+                console.log("error");
+            }
+        }                                
+    );
+
+
+    // prom.then(
+    //     async (response) => {
+    //         if (response.status === 200) {
+    //             // check for Content-Length header, if it doesn't exist we must use chunked request
+    //             if(response.headers.get("Content-Length") === null){
+    //                 // get image size
+    //                 let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
+    //                 // get image filetype
+    //                 let filetype = filetype_from_headers(response);
+    //                 // filter out erroneous text/html responses that are sometimes picked up
+    //                 if(filetype.includes("image")){
+    //                     unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search, "filetype": filetype}
+    //                 }
+    //             // else if Content-length header readily available
+    //             }else{
+    //                 // get image size
+    //                 let indicated_size = size_from_headers(response);
+    //                 // get image filetype
+    //                 let filetype = filetype_from_headers(response);
+    //                 // filter out erroneous text/html responses that are sometimes picked up
+    //                 if(filetype.includes("image")){
+    //                     unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search), "filetype": filetype}
+    //                 }
+    //             }
+    //         } else {
+    //         }
+    //     },
+    //     (error) => {
+    //         console.error(error);
+    //     }
+    // );
 
     
 }
@@ -818,6 +898,7 @@ browser.runtime.onMessage.addListener(
             let headers = request.headers;
             let im = request.image;
             let url = request.url;
+            let kind = request. kind;
             // console.log(headers);
             // get image status
             let headers_status = new_image_opt_status_from_headers(headers);
@@ -836,7 +917,7 @@ browser.runtime.onMessage.addListener(
                 "filetype": filetype,
             };
             // console.log(data);
-            handleImageHeadersCallback(data,url, im);
+            handleImageHeadersCallback(data,url, im, kind);
             return { status: "ok" };
             // if (headers_status === null) {
             //     // console.log("error- not 200");
