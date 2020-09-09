@@ -283,14 +283,13 @@ ul li::before {
 }
 .ImagesCount{
     text-align: center;
-    margin-top: 31%;
+    margin-top: 40%;
     left: 60px
 }
 
 .filetypes-count-div{
     text-align: center;
     margin-top: 2%;
-    left: 60px;
 }
 .btn-top {
     top: 20px;
@@ -299,4 +298,35 @@ ul li::before {
 
 .bold{
     font-weight: 600;
+}
+
+table{
+    margin-left: auto;
+    margin-right: auto;
+    border-collapse: collapse;
+
+}
+
+table, th, td {
+    border: 2px solid black;
+  }
+
+.tooltip-btn{
+    background-color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#popover-div{
+    background-color: white;
+    border: 2px solid black;
+    padding: 2%;
+    margin-right: 5%;
+}
+.label-align{
+    margin-top: 5%;
+}
+
+.exportcsvdiv{
+    margin-top: 5%;
 }

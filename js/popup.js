@@ -12,12 +12,20 @@ let vue_data = {
     "SplashScreen": true,
     "Spinner": false,
     "imagesCount":0,
-    "filetypes": {}
+    "filetype_data": {},
+    "filetypes": [],
+    
 };
 
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (sender.tab && sender.tab.active) {
+
+        $('#selection-popover').popover({
+            html: true,
+            trigger: 'hover'
+          });
+
         localStorage.setItem('clog', JSON.stringify(request));
         if (request.active === false) {
             vue_data["Active"] = false;
@@ -71,22 +79,49 @@ function summarizeImagesModel(images_summary_input) {
     }
 
     let total_files = Object.keys(images_summary_input.optimized).length;
-    let filetypes = {};
-    // get file totals
-    for (const file of Object.keys(images_summary_input.optimized)){
-        let filetype = images_summary_input.optimized[file]["filetype"]
-        if(!(filetype in filetypes)){
-            filetypes[filetype] = 1;
+    let filetypes = [];
+    let filetype_data = {
+        origin: {},
+        optimised: {}
+    };
+    // get origin file totals
+    for (const file of Object.keys(images_summary_input.unoptimized)){
+        let filetype = images_summary_input.unoptimized[file]["filetype"];
+        if(!(filetype in filetype_data["origin"])){
+            filetype_data["origin"][filetype] = 1;
         }else{
-            filetypes[filetype] += 1;     
+            filetype_data["origin"][filetype] += 1;     
         }
     }
-    // get filetype percentages
-    for (const filetype of Object.keys(filetypes)){
-        filetypes[filetype] = Math.round((filetypes[filetype] / total_files) * 100) + "%";
+    // get optimised file totals
+    for (const file of Object.keys(images_summary_input.optimized)){
+        let filetype = images_summary_input.optimized[file]["filetype"]
+        if(!(filetype in filetype_data["optimised"])){
+            filetype_data["optimised"][filetype] = 1;
+        }else{
+            filetype_data["optimised"][filetype] += 1;     
+        }
     }
 
-    vue_data["filetypes"] = filetypes;
+    // get origin filetype percentages
+    for (const filetype of Object.keys(filetype_data["origin"])){
+        if(!(filetypes.includes(filetype.toString()))){
+            filetypes.push(filetype);
+        }
+        let num = filetype_data["origin"][filetype].toString() 
+        filetype_data["origin"][filetype] = num + " (" + Math.round((filetype_data["origin"][filetype] / total_files) * 100) + "%)"; 
+    }
+
+    for (const filetype of Object.keys(filetype_data["optimised"])){
+        if(!(filetypes.includes(filetype.toString()))){
+            filetypes.push(filetype);
+        }
+        let num = filetype_data["optimised"][filetype].toString() 
+        filetype_data["optimised"][filetype] = num + " (" + Math.round((filetype_data["optimised"][filetype] / total_files) * 100) + "%)"; 
+    }
+
+    vue_data["filetype_data"] = filetype_data;
+    vue_data["filetypes"] = filetypes
 }
 
 // function that formats numbers
@@ -169,6 +204,20 @@ window.vue_body_app = new Vue({
             vue_data["Spinner"] = true;
             this.changeShim("select");
 
+        },
+        getOriginFiletype: function(index){
+            if (vue_data["filetype_data"]["origin"][index] !== undefined){
+                return vue_data["filetype_data"]["origin"][index];
+                }else{
+                    return "0"
+                }
+        },
+        getOptimisedFiletype: function(index){
+            if (vue_data["filetype_data"]["optimised"][index] !== undefined){
+            return vue_data["filetype_data"]["optimised"][index];
+            }else{
+                return "0"
+            }
         }
     },
 
