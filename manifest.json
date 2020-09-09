@@ -9,7 +9,9 @@
       "declarativeContent",
       "activeTab",
       "contextMenus",
-      "downloads"
+      "downloads",
+      "webRequest",
+      "<all_urls>"
     ],
 
     "content_security_policy": "script-src 'self' 'unsafe-eval' https://maxcdn.bootstrapcdn.com https://cdnjs.cloudflare.com https://code.jquery.com; object-src 'self'",
@@ -27,7 +29,7 @@
         "js/browser_polyfill.js",
         "js/background.js"
       ],
-      "persistent": false
+      "persistent": true
     },
 
     "options_page": "options.html",

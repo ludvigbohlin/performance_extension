@@ -86,39 +86,42 @@ function displaySelected(){
         im.currentSrc = originalUrl;
         im.src = originalUrl;
 
-        urlPointsToStatus(optimisedUrl, optimisationSource)
-            .then(([status, transfer_size, filetype]) => {
-                removeCustomStyles(im);
-                if(optimisationSource == 'serviceWorker'){
-                    im.classList.remove("scbca-gray"); 
-                    b()
-                }
-                else if (status === "ready") {
-                    im.classList.remove("scbca-gray");
-                    h();
-                } else if (status === "non-viable") {
-                    im.classList.remove("scbca-gray");
-                    i();
-                } else if (status === "in-processing") {
-                    im.classList.remove("scbca-gray");
-                    g();
-                } else {
-                    im.classList.add("scbca-gray");
-                }    
-                if (transfer_size !== null) {
-                    if(filetype.includes("image")){
-                        // add image to optimised images object ready for compression computation in popup.js
-                        optimizedSizeModel[optimisedUrl] = {
-                            'status': status,
-                            'transfer_size': transfer_size,
-                            'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
-                            'filetype': filetype};
-                    }
-                }else{
-                }
-                }
+        urlPointsToStatus(optimisedUrl, optimisationSource, im.src);
+        //     .then(([status, transfer_size, filetype]) => {
+        //         // console.log("status: ", status);
+        //         // console.log("transfer size: ", transfer_size);
+        //         // console.log("filetype: ", filetype);
+        //         removeCustomStyles(im);
+        //         if(optimisationSource == 'serviceWorker'){
+        //             im.classList.remove("scbca-gray"); 
+        //             b()
+        //         }
+        //         else if (status === "ready") {
+        //             im.classList.remove("scbca-gray");
+        //             h();
+        //         } else if (status === "non-viable") {
+        //             im.classList.remove("scbca-gray");
+        //             i();
+        //         } else if (status === "in-processing") {
+        //             im.classList.remove("scbca-gray");
+        //             g();
+        //         } else {
+        //             im.classList.add("scbca-gray");
+        //         }    
+        //         if (transfer_size !== null) {
+        //             if(filetype.includes("image")){
+        //                 // add image to optimised images object ready for compression computation in popup.js
+        //                 optimizedSizeModel[optimisedUrl] = {
+        //                     'status': status,
+        //                     'transfer_size': transfer_size,
+        //                     'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+        //                     'filetype': filetype};
+        //             }
+        //         }else{
+        //         }
+        //         }
                 
-        );
+        // );
     } 
 }
 
@@ -188,7 +191,7 @@ async function refreshSelectedView() {
             displaySelected();
         }
         // automated refresh & sending of data to popup.js
-        window.setTimeout(refreshSelectedView, 15000);
+        // window.setTimeout(refreshSelectedView, 15000);
         window.setTimeout(sendModelSummaries, 3000);
     }
 }
@@ -198,7 +201,7 @@ async function changeToSelected() {
     if (currentView !== "selected") {
         // automated refresh & sending of data to popup.js
         window.setTimeout(sendModelSummaries, 3000);
-        window.setTimeout(refreshSelectedView, 15000);
+        // window.setTimeout(refreshSelectedView, 15000);
     }
     currentView = "selected";
 
@@ -411,6 +414,33 @@ function image_opt_status_from_headers(response) {
     return headers_status;
 }
 
+function new_image_opt_status_from_headers(headers) {
+    let headers_status = null;
+    for (let
+        /** @type String[] */
+        header_val_arr of headers.entries()) {
+        let [header_name, header_value] = header_val_arr;
+        let header = header_value["name"]
+        let value = header_value['value'];
+
+        if (header === "sc-note") {
+            if (value.includes("webp0=nv")) {
+                headers_status = 'non-viable';
+                break;
+            } else if (value.includes("webp0=ip")) {
+                headers_status = 'in-processing'
+                break;
+            } else if (value.includes("webp0=re")) {
+                headers_status = 'ready'
+                break;
+            }
+            else {
+            }
+        }
+    }
+    return headers_status;
+}
+
 // function that reads header values for a given image and determines the file size of the image for computing compression amount  
 function size_from_headers(response) {
     let result = null;
@@ -420,6 +450,22 @@ function size_from_headers(response) {
         let [header_name, header_value] = header_val_arr;
         if (header_name.match(/[Cc]ontent-[Ll]ength/)) {
             result = Number(header_value);
+            break;
+        }
+    }
+    return result;
+}
+
+function new_size_from_headers(headers) {
+    let result = null;
+    for (let
+        /** @type String[] */
+        header_val_arr of headers.entries()) {
+        let [header_name, header_value] = header_val_arr;
+        let header = header_value["name"]
+        let value = header_value['value'];
+        if (header.match(/[Cc]ontent-[Ll]ength/)) {
+            result = Number(value);
             break;
         }
     }
@@ -441,9 +487,24 @@ function filetype_from_headers(response){
     return result; 
 }
 
+function new_filetype_from_headers(headers){
+    let result = null;
+    for (let
+        header_val_arr of headers.entries()) {
+        let [header_name, header_value] = header_val_arr;
+        let header = header_value["name"]
+        let value = header_value['value'];
+        if (header.match(/[Cc]ontent-[Tt]ype/)) {
+            result = value;
+            break;
+        }
+    }
+    return result; 
+}
+
 
 // function that makes a request to the optimised url of each image which then gives status information and file size
-function urlPointsToStatus(url, optimisationSource) {
+function urlPointsToStatus(url, optimisationSource, im) {
     let mode = "cors";
     let headers = new Headers({
     });
@@ -468,36 +529,135 @@ function urlPointsToStatus(url, optimisationSource) {
     
     let prom = fetch(fetch_request);
 
-    let resultP = new Promise((resolve, reject) => {
-        prom.then(
-            (response) => {
-                if (response.status === 200) {
-                    
-                    // get image status
-                    let headers_status = image_opt_status_from_headers(response);
-                    // get image size
-                    let indicated_size = size_from_headers(response);
+    // notify background.js of the url we want to monitor
+    
+    // console.log("sending: ", url);
+    browser.runtime.sendMessage({
+        command: "imageTransfer",
+        url: url,
+        image: im
+    }).then(
+        () => { console.log("message sent")},
+        () => { },
+    );
 
-                    // get image filetype
-                    let filetype = filetype_from_headers(response);
-                    if (headers_status === null) {
-
-                        resolve([false, indicated_size, filetype]);
-                    } else {
-
-                        resolve([headers_status, indicated_size, filetype]);
-                    }
-                } else {
-                    resolve([null, null, null]);
-                }
-            },
-            (error) => {
-                resolve([null, null, null]);
+    prom.then(
+        (response) => {
+            if (response.status === 200) {
             }
-        )
-    });
+            else {
+                console.log("error");
+            }
+        }                                
+    );
 
-    return resultP;
+    // prom.the
+        
+    
+    // let resultP = new Promise((resolve, reject) => {
+    //     prom.then(
+    //         (response) => {
+    //             if (response.status === 200) {
+    //                 let headers_status = '';
+    //                 let indicated_size = '';
+    //                 let filetype = '';
+
+    //                 // browser.runtime.onMessage.addListener(
+    //                 //     function (request, sender, sendResponse) {
+    //                 //         if(request.headers){
+    //                 //             let headers = request.headers;
+    //                 //             // console.log(headers);
+    //                 //             // get image status
+    //                 //             let headers_status = new_image_opt_status_from_headers(headers);
+    //                 //             // console.log("headers status: ", headers_status);
+    //                 //             // get image size
+    //                 //             let indicated_size = new_size_from_headers(headers);
+    //                 //             // console.log("indicated size: ", indicated_size);
+
+    //                 //             // get image filetype
+    //                 //             let filetype = new_filetype_from_headers(headers);
+    //                 //             // console.log("filetype: ", filetype);
+
+    //                 //             if (headers_status === null) {
+    //                 //                 // console.log("error- not 200");
+    //                 //                 resolve([false, indicated_size, filetype]);
+    //                 //             } else {
+    //                 //                 // console.log("error- not 200");
+    //                 //                 resolve([headers_status, indicated_size, filetype]);
+    //                 //             }
+    //                 //         }
+                    
+    //                 //     }
+    //                 // );
+    //                 // if (headers_status === null) {
+    //                 //                 // console.log("error- not 200");
+    //                 //     resolve([false, indicated_size, filetype]);
+    //                 // } else {
+    //                 //     // console.log("error- not 200");
+    //                 //     resolve([headers_status, indicated_size, filetype]);
+    //                 // }
+    //                 // console.log("200"); 
+    //                 // get image status
+    //                 // let headers_status = image_opt_status_from_headers(response);
+    //                 // get image size
+    //                 // let indicated_size = size_from_headers(response);
+
+    //                 // get image filetype
+    //                 // let filetype = filetype_from_headers(response);
+
+    //             } else {
+    //                 console.log("error");
+    //                 // resolve([null, null, null]);
+    //             }
+    //         },
+    //         (error) => {
+    //             console.log("error");
+    //             // resolve([null, null, null]);
+    //         }
+    //     )
+    // });
+
+    // return resultP;
+
+}
+
+function handleImageHeadersCallback(data,url, imageSource){
+    // console.log(data);
+    let status = data.status;
+    let transfer_size = data.size;
+    let filetype = data.filetype;
+    // console.log("im: ", im);
+    // let im = $(`img[src=${imageSource}]`);
+    // console.log(im);
+    // removeCustomStyles(im);
+    // // if(optimisationSource == 'serviceWorker'){
+    // //     im.classList.remove("scbca-gray"); 
+    // //     b()
+    // // }
+    // if (status === "ready") {
+    //     im.classList.remove("scbca-gray");
+    //     h();
+    // } else if (status === "non-viable") {
+    //     im.classList.remove("scbca-gray");
+    //     i();
+    // } else if (status === "in-processing") {
+    //     im.classList.remove("scbca-gray");
+    //     g();
+    // } else {
+    //     im.classList.add("scbca-gray");
+    // }    
+    if (transfer_size !== null) {
+        if(filetype.includes("image")){
+            // add image to optimised images object ready for compression computation in popup.js
+            optimizedSizeModel[url] = {
+                'status': status,
+                'transfer_size': transfer_size,
+                // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                'filetype': filetype};
+            console.log(optimizedSizeModel);
+        }
+    }else{
+    }
 }
 
 // function that makes a request to the original url of each image which then gives status information and file size
@@ -654,7 +814,38 @@ browser.runtime.onMessage.addListener(
         } else if (request.hasOwnProperty("refreshView") && shimSelected === "select") {
             changeToSelected();
         }
+        if(request.hasOwnProperty("headers")){
+            let headers = request.headers;
+            let im = request.image;
+            let url = request.url;
+            // console.log(headers);
+            // get image status
+            let headers_status = new_image_opt_status_from_headers(headers);
+            // console.log("headers status: ", headers_status);
+            // get image size
+            let indicated_size = new_size_from_headers(headers);
+            // console.log("indicated size: ", indicated_size);
 
+            // get image filetype
+            let filetype = new_filetype_from_headers(headers);
+            // console.log("filetype: ", filetype);
+
+            let data = {
+                "header_status": headers_status,
+                "size": indicated_size,
+                "filetype": filetype,
+            };
+            // console.log(data);
+            handleImageHeadersCallback(data,url, im);
+            return { status: "ok" };
+            // if (headers_status === null) {
+            //     // console.log("error- not 200");
+            //     resolve([false, indicated_size, filetype]);
+            // } else {
+            //     // console.log("error- not 200");
+            //     resolve([headers_status, indicated_size, filetype]);
+            // }
+        }
     }
 );
 

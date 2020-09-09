@@ -1,22 +1,31 @@
+let urls = [];
+let images = {};
 
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+  if (request.command === 'startup'){
+    const CustomANALYZED_DOMAIN = request.hostname; //retrive hostname in request from js/find_domain_name.js
+    chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
+      chrome.declarativeContent.onPageChanged.addRules(
+        [{
+          conditions: [
+            new browser.declarativeContent.PageStateMatcher(
+              {
+                pageUrl: { hostEquals: CustomANALYZED_DOMAIN },
+              })
+          ],
+          actions: [new browser.declarativeContent.ShowPageAction()]
+        }]);
+    });
 
-  const CustomANALYZED_DOMAIN = request.hostname; //retrive hostname in request from js/find_domain_name.js
-  chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
-    chrome.declarativeContent.onPageChanged.addRules(
-      [{
-        conditions: [
-          new browser.declarativeContent.PageStateMatcher(
-            {
-              pageUrl: { hostEquals: CustomANALYZED_DOMAIN },
-            })
-        ],
-        actions: [new browser.declarativeContent.ShowPageAction()]
-      }]);
-  });
+    sendResponse({ "status": "Welcome to ShimmerCat Image Extension" })
+  }
+  if(request.command === 'imageTransfer'){
+    // console.log("received url in background");
+    // urls.push(request.url);
+    images[request.url] = request.image;
 
-  sendResponse({ "status": "Welcome to ShimmerCat Image Extension" })
+  }
 });
 const ANALYZED_DOMAIN = 'https://tools.se';
 
@@ -138,3 +147,44 @@ browser.runtime.onInstalled.addListener(() => {
 });
 
 install_context_menus();
+
+
+// listener for getting serviceWorker 
+chrome.webRequest.onCompleted.addListener(function(details){
+  // console.log(details.url);
+  // console.log(urls);
+  if (details.url in images){
+    // console.log(details.url);
+    // console.log(details.responseHeaders);
+
+    browser.tabs.query({ active: true, currentWindow: true })
+            .then(
+              (tabs) => {
+                if (tabs.length > 0) {
+                  return browser.tabs.sendMessage(tabs[0].id, { 
+                    headers: details.responseHeaders,
+                    image : images[details.url],
+                    url : details.url });
+                  // delete images[details.url]; 
+                    // .then(
+                    //   () => { 
+                    //     delete images[details.url];
+                    //     console.log("message sent to content script");
+                    //     // urls = urls.filter(v => v !== details.url);  
+                    //   },
+                    //   () => { 
+                    //       // console.error("message was not sent! ");  
+                    //   }
+                    // );
+                }
+              })
+              .then(()=>{
+                delete images[details.url];  
+              })
+            // .then((response) => {
+            //   // console.log(response);
+            // });
+  }
+},
+{urls: ["<all_urls>"]},
+["responseHeaders"]);

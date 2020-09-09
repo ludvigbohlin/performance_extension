@@ -20,6 +20,7 @@ let vue_data = {
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (sender.tab && sender.tab.active) {
+        console.log(request);
 
         $('#selection-popover').popover({
             html: true,
