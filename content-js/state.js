@@ -628,7 +628,7 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
     // let g = highlightAsProcessing.bind(null, im);
     // let i = highlightAsNonViable.bind(null, im);
     // let b = highlightAsServiceWorkerImage.bind(null, im);
-
+    let urlObj = new URL(url); 
     let status = data.status;
     let transfer_size = data.size;
     let filetype = data.filetype;
@@ -659,7 +659,7 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                 unoptimizedSizeModel[url] = {
                     'status': status,
                     'transfer_size': transfer_size,
-                    // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                    'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
                     'filetype': filetype};
                 // console.log(un);
             }
@@ -667,7 +667,7 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                 optimizedSizeModel[url] = {
                     'status': status,
                     'transfer_size': transfer_size,
-                    // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                    'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
                     'filetype': filetype};
                 // console.log(optimizedSizeModel);
             }
