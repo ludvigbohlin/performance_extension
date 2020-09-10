@@ -8,6 +8,7 @@ let currentView = null;
 let Active = true;
 let serviceWorker = false;
 let serviceWorkerDomains = {};
+let imageDict = {};
 
 // function that iterates through images in DOM & returns original & optimised image sources
 function* iterateOnImages() {
@@ -16,6 +17,7 @@ function* iterateOnImages() {
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let originalUrl = new URL(im.currentSrc);
+            imageDict[originalUrl] = im;
             let optimisedUrl = '';
             let doc_hostname = document.location.hostname;
 
@@ -46,6 +48,7 @@ function* iterateOnImages() {
             let optimisedUrl = '';
         
             let originalUrl = new URL(returned_url);
+            imageDict[originalUrl] = im;
             let doc_hostname = document.location.hostname;
             
             // check if image is supported by the serviceWorker
@@ -74,54 +77,15 @@ function* iterateOnImages() {
 
 // function that displays various styles based on the status of the image
 function displaySelected(){
+    imageDict = {};
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
     for (let [im, originalUrl,optimisedUrl, optimisationSource] of iterateOnImages()) {
-        let h = highlightAsWebp.bind(null, im);
-        let g = highlightAsProcessing.bind(null, im);
-        let i = highlightAsNonViable.bind(null, im);
-        let b = highlightAsServiceWorkerImage.bind(null, im);
-
-        
+    
         im.currentSrc = originalUrl;
         im.src = originalUrl;
 
-        urlPointsToStatus(optimisedUrl, optimisationSource, im.src);
-        //     .then(([status, transfer_size, filetype]) => {
-        //         // console.log("status: ", status);
-        //         // console.log("transfer size: ", transfer_size);
-        //         // console.log("filetype: ", filetype);
-        //         removeCustomStyles(im);
-        //         if(optimisationSource == 'serviceWorker'){
-        //             im.classList.remove("scbca-gray"); 
-        //             b()
-        //         }
-        //         else if (status === "ready") {
-        //             im.classList.remove("scbca-gray");
-        //             h();
-        //         } else if (status === "non-viable") {
-        //             im.classList.remove("scbca-gray");
-        //             i();
-        //         } else if (status === "in-processing") {
-        //             im.classList.remove("scbca-gray");
-        //             g();
-        //         } else {
-        //             im.classList.add("scbca-gray");
-        //         }    
-        //         if (transfer_size !== null) {
-        //             if(filetype.includes("image")){
-        //                 // add image to optimised images object ready for compression computation in popup.js
-        //                 optimizedSizeModel[optimisedUrl] = {
-        //                     'status': status,
-        //                     'transfer_size': transfer_size,
-        //                     'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
-        //                     'filetype': filetype};
-        //             }
-        //         }else{
-        //         }
-        //         }
-                
-        // );
+        urlPointsToStatus(optimisedUrl, optimisationSource, originalUrl);
     } 
 }
 
@@ -191,8 +155,8 @@ async function refreshSelectedView() {
             displaySelected();
         }
         // automated refresh & sending of data to popup.js
-        // window.setTimeout(refreshSelectedView, 15000);
-        window.setTimeout(sendModelSummaries, 3000);
+        // window.setTimeout(refreshSelectedView,   16000);
+        window.setTimeout(sendModelSummaries, 4000);
     }
 }
 
@@ -200,8 +164,8 @@ async function refreshSelectedView() {
 async function changeToSelected() {
     if (currentView !== "selected") {
         // automated refresh & sending of data to popup.js
-        window.setTimeout(sendModelSummaries, 3000);
-        // window.setTimeout(refreshSelectedView, 15000);
+        window.setTimeout(sendModelSummaries, 4000);
+        // window.setTimeout(refreshSelectedView, 16000);
     }
     currentView = "selected";
 
@@ -271,25 +235,22 @@ function changeToOptimized() {
 
     //iterate through images and change src to the optimised version
     images.forEach((im) => {
+        // remove styles
+        removeCustomStyles(im);
         if (canUseUrl(im.currentSrc)) {
             let url = new URL(im.currentSrc);
             let doc_hostname = document.location.hostname;
-            // if serviceWorker image
             let optimised_image_url = getServiceWorkerUrl(url);
             if (optimised_image_url !== undefined){
-                // optimisationSource = 'serviceWorker';
-                removeCustomStyles(im);
                 im.src = optimised_image_url;
             }else{
-                if (url.hostname === doc_hostname) {
-                    removeCustomStyles(im);
+                if (url.hostname === doc_hostname) {;
                     let dataset = im.dataset;
                     if (dataset.hasOwnProperty("scbOriginalLocation")) {
                         im.src = dataset.scbOriginalLocation;
                     }
                 }
             }
-            ;
         }
         if (retrieving(im.style['backgroundImage'])) {
             let returned_url = retrieving(im.style['backgroundImage']);
@@ -299,12 +260,9 @@ function changeToOptimized() {
             // if serviceWorker image
             let optimised_image_url = getServiceWorkerUrl(url);
             if (optimised_image_url !== undefined){
-                // optimisationSource = 'serviceWorker';
-                removeCustomStyles(im);
                 im.src = optimised_image_url;
             }else{
                 if (url.hostname === doc_hostname) {
-                    removeCustomStyles(im);
                     let dataset = im.dataset;
                     if (dataset.hasOwnProperty("scbOriginalLocation")) {
                         im.src = dataset.scbOriginalLocation;
@@ -531,7 +489,6 @@ function urlPointsToStatus(url, optimisationSource, im) {
 
     // notify background.js of the url we want to monitor
     
-    // console.log("sending: ", url);
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
@@ -552,106 +509,32 @@ function urlPointsToStatus(url, optimisationSource, im) {
         }                                
     );
 
-    // prom.the
-        
-    
-    // let resultP = new Promise((resolve, reject) => {
-    //     prom.then(
-    //         (response) => {
-    //             if (response.status === 200) {
-    //                 let headers_status = '';
-    //                 let indicated_size = '';
-    //                 let filetype = '';
-
-    //                 // browser.runtime.onMessage.addListener(
-    //                 //     function (request, sender, sendResponse) {
-    //                 //         if(request.headers){
-    //                 //             let headers = request.headers;
-    //                 //             // console.log(headers);
-    //                 //             // get image status
-    //                 //             let headers_status = new_image_opt_status_from_headers(headers);
-    //                 //             // console.log("headers status: ", headers_status);
-    //                 //             // get image size
-    //                 //             let indicated_size = new_size_from_headers(headers);
-    //                 //             // console.log("indicated size: ", indicated_size);
-
-    //                 //             // get image filetype
-    //                 //             let filetype = new_filetype_from_headers(headers);
-    //                 //             // console.log("filetype: ", filetype);
-
-    //                 //             if (headers_status === null) {
-    //                 //                 // console.log("error- not 200");
-    //                 //                 resolve([false, indicated_size, filetype]);
-    //                 //             } else {
-    //                 //                 // console.log("error- not 200");
-    //                 //                 resolve([headers_status, indicated_size, filetype]);
-    //                 //             }
-    //                 //         }
-                    
-    //                 //     }
-    //                 // );
-    //                 // if (headers_status === null) {
-    //                 //                 // console.log("error- not 200");
-    //                 //     resolve([false, indicated_size, filetype]);
-    //                 // } else {
-    //                 //     // console.log("error- not 200");
-    //                 //     resolve([headers_status, indicated_size, filetype]);
-    //                 // }
-    //                 // console.log("200"); 
-    //                 // get image status
-    //                 // let headers_status = image_opt_status_from_headers(response);
-    //                 // get image size
-    //                 // let indicated_size = size_from_headers(response);
-
-    //                 // get image filetype
-    //                 // let filetype = filetype_from_headers(response);
-
-    //             } else {
-    //                 console.log("error");
-    //                 // resolve([null, null, null]);
-    //             }
-    //         },
-    //         (error) => {
-    //             console.log("error");
-    //             // resolve([null, null, null]);
-    //         }
-    //     )
-    // });
-
-    // return resultP;
-
 }
 
 function handleImageHeadersCallback(data,url, imageSource, kind){
-    // console.log(data);
-    // let h = highlightAsWebp.bind(null, im);
-    // let g = highlightAsProcessing.bind(null, im);
-    // let i = highlightAsNonViable.bind(null, im);
-    // let b = highlightAsServiceWorkerImage.bind(null, im);
     let urlObj = new URL(url); 
+    let im = imageDict[urlObj]
+    let h = highlightAsWebp.bind(null, im);
+    let g = highlightAsProcessing.bind(null, im);
+    let i = highlightAsNonViable.bind(null, im);
     let status = data.status;
     let transfer_size = data.size;
     let filetype = data.filetype;
-    // console.log("im: ", im);
-    // let im = $(`img[src=${imageSource}]`);
-    // console.log(im);
-    // removeCustomStyles(im);
-    // // if(optimisationSource == 'serviceWorker'){
-    // //     im.classList.remove("scbca-gray"); 
-    // //     b()
-    // // }
-    // if (status === "ready") {
-    //     im.classList.remove("scbca-gray");
-    //     h();
-    // } else if (status === "non-viable") {
-    //     im.classList.remove("scbca-gray");
-    //     i();
-    // } else if (status === "in-processing") {
-    //     im.classList.remove("scbca-gray");
-    //     g();
-    // } else {
-    //     im.classList.add("scbca-gray");
-    // }    
+    if (im !== undefined){
+        removeCustomStyles(im);
+        if (status === "ready") {
+            im.classList.remove("scbca-gray");
+            h();
+        } else if (status === "non-viable") {
+            im.classList.remove("scbca-gray");
+            i();
+        } else if (status === "in-processing") {
+            im.classList.remove("scbca-gray");
+            g();
+        } else {
+            im.classList.add("scbca-gray");
+        }  
+    }  
     if (transfer_size !== null) {
         if(filetype.includes("image")){
             // add image to optimised images object ready for compression computation in popup.js
@@ -661,7 +544,6 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                     'transfer_size': transfer_size,
                     'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
                     'filetype': filetype};
-                // console.log(un);
             }
             if (kind == 'optimised'){
                 optimizedSizeModel[url] = {
@@ -669,7 +551,6 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                     'transfer_size': transfer_size,
                     'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
                     'filetype': filetype};
-                // console.log(optimizedSizeModel);
             }
         }
     }else{
@@ -697,20 +578,27 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                         unoptimizedSizeModel[url] = {
                             'status': status,
                             'transfer_size': transfer_size,
-                            // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                            'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
                             'filetype': filetype};
-                        // console.log(un);
                     }
                     if (kind == 'optimised'){
                         optimizedSizeModel[url] = {
                             'status': status,
                             'transfer_size': transfer_size,
-                            // 'pathname': originalUrl.pathname + stripHAPsSearchParam(originalUrl.search),
+                            'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
                             'filetype': filetype};
                     }
                 }
+                return;
             } 
-
+            else{
+                console.error("not 200");
+                return;
+            }
+        })
+        .catch((error) => {
+            console.error(error);
+            return;
         })
     }
 }
@@ -742,7 +630,6 @@ function populateUnoptimizedSizeModel(url, optimisationSource, im) {
 
     // notify background.js of the url we want to monitor
     
-    // console.log("sending: ", url);
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
@@ -762,40 +649,6 @@ function populateUnoptimizedSizeModel(url, optimisationSource, im) {
             }
         }                                
     );
-
-
-    // prom.then(
-    //     async (response) => {
-    //         if (response.status === 200) {
-    //             // check for Content-Length header, if it doesn't exist we must use chunked request
-    //             if(response.headers.get("Content-Length") === null){
-    //                 // get image size
-    //                 let indicated_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
-    //                 // get image filetype
-    //                 let filetype = filetype_from_headers(response);
-    //                 // filter out erroneous text/html responses that are sometimes picked up
-    //                 if(filetype.includes("image")){
-    //                     unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + urlObj.search, "filetype": filetype}
-    //                 }
-    //             // else if Content-length header readily available
-    //             }else{
-    //                 // get image size
-    //                 let indicated_size = size_from_headers(response);
-    //                 // get image filetype
-    //                 let filetype = filetype_from_headers(response);
-    //                 // filter out erroneous text/html responses that are sometimes picked up
-    //                 if(filetype.includes("image")){
-    //                     unoptimizedSizeModel[url] = {"transfer_size": indicated_size, "pathname": urlObj.pathname + stripHAPsSearchParam(urlObj.search), "filetype": filetype}
-    //                 }
-    //             }
-    //         } else {
-    //         }
-    //     },
-    //     (error) => {
-    //         console.error(error);
-    //     }
-    // );
-
     
 }
 
@@ -832,6 +685,8 @@ function changeToUnoptimized() {
     let images = document.querySelectorAll("*,img.lazyloaded");
     images.forEach((im) => {
         const from_url = im.currentSrc;
+        // remove styles
+        removeCustomStyles(im);
 
         if (canUseUrl(from_url)) {
             let url = new URL(im.currentSrc);
@@ -839,12 +694,10 @@ function changeToUnoptimized() {
             // if serviceWorker image
             let optimised_image_url = getServiceWorkerUrl(url);
             if (optimised_image_url !== undefined){
-                removeCustomStyles(im);
                 //shimmercat.cloud -> original url 
                 im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
             }else{
                 if (url.hostname === doc_hostname) {
-                    removeCustomStyles(im);
                     let original_url = originalURLOfImage(im);
                     let use_url = toNoHAPsURL(original_url);
                     im.src = use_url.toString();
@@ -899,33 +752,21 @@ browser.runtime.onMessage.addListener(
             let im = request.image;
             let url = request.url;
             let kind = request. kind;
-            // console.log(headers);
             // get image status
             let headers_status = new_image_opt_status_from_headers(headers);
-            // console.log("headers status: ", headers_status);
             // get image size
             let indicated_size = new_size_from_headers(headers);
-            // console.log("indicated size: ", indicated_size);
 
             // get image filetype
             let filetype = new_filetype_from_headers(headers);
-            // console.log("filetype: ", filetype);
 
             let data = {
-                "header_status": headers_status,
+                "status": headers_status,
                 "size": indicated_size,
                 "filetype": filetype,
             };
-            // console.log(data);
             handleImageHeadersCallback(data,url, im, kind);
             return { status: "ok" };
-            // if (headers_status === null) {
-            //     // console.log("error- not 200");
-            //     resolve([false, indicated_size, filetype]);
-            // } else {
-            //     // console.log("error- not 200");
-            //     resolve([headers_status, indicated_size, filetype]);
-            // }
         }
     }
 );

@@ -1,4 +1,3 @@
-// let urls = [];
 let optimisedImages = {};
 let originalImages = {};
 
@@ -22,7 +21,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     sendResponse({ "status": "Welcome to ShimmerCat Image Extension" })
   }
   if(request.command === 'imageTransfer'){
-    // console.log("received url in background");
     if(request.kind === 'original'){
       originalImages[request.url] = request.image;
     }else{
@@ -155,11 +153,7 @@ install_context_menus();
 
 // listener for getting serviceWorker 
 chrome.webRequest.onCompleted.addListener(function(details){
-  // console.log(details.url);
-  // console.log(urls);
   if (details.url in originalImages){
-    console.log(details.url);
-    // console.log(details.responseHeaders);
     browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
@@ -171,13 +165,16 @@ chrome.webRequest.onCompleted.addListener(function(details){
                     kind : "original" });
                 }
               })
-              .then(()=>{
-                delete optimisedImages[details.url];  
-              })
+              .then(
+                ()=>{
+                delete originalImages[details.url];  
+              },
+              (error) => {
+                console.error("error sending headers")
+                console.error(error);
+            })
   }
   if (details.url in optimisedImages){
-    console.log(details.url);
-    // console.log(details.responseHeaders);
     browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
@@ -190,10 +187,13 @@ chrome.webRequest.onCompleted.addListener(function(details){
                 }
               })
               .then(()=>{
-                delete optimisedImages[details.url];  
-              })
+                delete optimisedImages[details.url]
+              },
+              (error) => {
+                console.error("error sending headers")
+                console.error(error);
+            })
   }
-
 },
 {urls: ["<all_urls>"]},
 ["responseHeaders"]);
