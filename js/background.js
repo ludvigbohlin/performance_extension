@@ -1,22 +1,33 @@
+let optimisedImages = {};
+let originalImages = {};
 
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+  if (request.command === 'startup'){
+    const CustomANALYZED_DOMAIN = request.hostname; //retrive hostname in request from js/find_domain_name.js
+    chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
+      chrome.declarativeContent.onPageChanged.addRules(
+        [{
+          conditions: [
+            new browser.declarativeContent.PageStateMatcher(
+              {
+                pageUrl: { hostEquals: CustomANALYZED_DOMAIN },
+              })
+          ],
+          actions: [new browser.declarativeContent.ShowPageAction()]
+        }]);
+    });
 
-  const CustomANALYZED_DOMAIN = request.hostname; //retrive hostname in request from js/find_domain_name.js
-  chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
-    chrome.declarativeContent.onPageChanged.addRules(
-      [{
-        conditions: [
-          new browser.declarativeContent.PageStateMatcher(
-            {
-              pageUrl: { hostEquals: CustomANALYZED_DOMAIN },
-            })
-        ],
-        actions: [new browser.declarativeContent.ShowPageAction()]
-      }]);
-  });
+    sendResponse({ "status": "Welcome to ShimmerCat Image Extension" })
+  }
+  if(request.command === 'imageTransfer'){
+    if(request.kind === 'original'){
+      originalImages[request.url] = request.image;
+    }else{
+      optimisedImages[request.url] = request.image; 
+    }
 
-  sendResponse({ "status": "Welcome to ShimmerCat Image Extension" })
+  }
 });
 const ANALYZED_DOMAIN = 'https://tools.se';
 
@@ -138,3 +149,51 @@ browser.runtime.onInstalled.addListener(() => {
 });
 
 install_context_menus();
+
+
+// listener for getting serviceWorker 
+chrome.webRequest.onCompleted.addListener(function(details){
+  if (details.url in originalImages){
+    browser.tabs.query({ active: true, currentWindow: true })
+            .then(
+              (tabs) => {
+                if (tabs.length > 0) {
+                  return browser.tabs.sendMessage(tabs[0].id, { 
+                    headers: details.responseHeaders,
+                    image : originalImages[details.url],
+                    url : details.url,
+                    kind : "original" });
+                }
+              })
+              .then(
+                ()=>{
+                delete originalImages[details.url];  
+              },
+              (error) => {
+                console.error("error sending headers")
+                console.error(error);
+            })
+  }
+  if (details.url in optimisedImages){
+    browser.tabs.query({ active: true, currentWindow: true })
+            .then(
+              (tabs) => {
+                if (tabs.length > 0) {
+                  return browser.tabs.sendMessage(tabs[0].id, { 
+                    headers: details.responseHeaders,
+                    image : optimisedImages[details.url],
+                    url : details.url,
+                    kind : "optimised" });
+                }
+              })
+              .then(()=>{
+                delete optimisedImages[details.url]
+              },
+              (error) => {
+                console.error("error sending headers")
+                console.error(error);
+            })
+  }
+},
+{urls: ["<all_urls>"]},
+["responseHeaders"]);
