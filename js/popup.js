@@ -14,18 +14,20 @@ let vue_data = {
     "imagesCount":0,
     "filetype_data": {},
     "filetypes": [],
+    "cors_error": false,
+    "cors_error_number": 0,
     
 };
 
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (sender.tab && sender.tab.active) {
-        console.log(request);
 
-        $('#selection-popover').popover({
+        setTimeout(function(){
+        $('[data-toggle="popover"]').popover({
             html: true,
             trigger: 'hover'
-          });
+          })}, 4000);
 
         localStorage.setItem('clog', JSON.stringify(request));
         if (request.active === false) {
@@ -58,6 +60,27 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
  * @param {ImagesSummaryInput} images_summary_input
  */
 function summarizeImagesModel(images_summary_input) {
+    // if original, optimised image count is not equal
+    if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length ){
+        console.log("error");
+        vue_data['cors_error'] = true;
+        // get number of serviceworker images that are not in original images but are in optimised
+        let cors_error_number = 0;
+        for (var key in images_summary_input.optimized){
+            console.log(key);
+            var originalKey = Object.keys(images_summary_input.unoptimized).find(searchKey => images_summary_input.unoptimized[searchKey]["pathname"] === images_summary_input.optimized[key]["pathname"]);
+            if (originalKey === undefined){
+                cors_error_number +=1; 
+            }
+            // if (!(key in images_summary_input.unoptimized)){
+            //     console.log("not there");
+            //     cors_error_number +=1;
+            // }
+        }
+        console.log("test");
+        vue_data["cors_error_number"] = cors_error_number;
+    }
+
     // calculate total size of all original images found
     let total_unoptimized_size = 0.0;
     for (let im_url of Object.getOwnPropertyNames(images_summary_input.unoptimized)) {

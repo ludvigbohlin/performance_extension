@@ -154,6 +154,8 @@ install_context_menus();
 // listener for getting serviceWorker 
 chrome.webRequest.onCompleted.addListener(function(details){
   if (details.url in originalImages){
+    console.log(details.url);
+    console.log(details.responseHeaders);
     browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {

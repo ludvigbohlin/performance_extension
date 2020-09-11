@@ -520,6 +520,9 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
     let status = data.status;
     let transfer_size = data.size;
     let filetype = data.filetype;
+    if(kind==='original'){
+        // console.log(filetype);
+    }
     if (im !== undefined){
         removeCustomStyles(im);
         if (status === "ready") {
@@ -554,6 +557,8 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
             }
         }
     }else{
+        console.log(url);
+        console.log(filetype);
         let mode = "cors";
         let headers = new Headers({
         });
@@ -647,7 +652,8 @@ function populateUnoptimizedSizeModel(url, optimisationSource, im) {
             else {
                 console.log("error");
             }
-        }                                
+        }, 
+        (response) => {}                                
     );
     
 }

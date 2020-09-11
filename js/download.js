@@ -23,7 +23,11 @@ function download_csv(){
 			b.push(data.unoptimized[key]["transfer_size"]);
 
 			var optimizedKey = Object.keys(data.optimized).find(searchKey => data.optimized[searchKey]["pathname"] === data.unoptimized[key]["pathname"]);
-			c.push(data.optimized[optimizedKey]["transfer_size"])
+			if (optimizedKey === undefined){
+				b.pop();
+			}else{
+				c.push(data.optimized[optimizedKey]["transfer_size"])
+			}
 		}
 	} 
 
