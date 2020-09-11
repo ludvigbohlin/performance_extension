@@ -11,3 +11,7 @@
 1. Open Chrome
 2. Browse a website using ShimmerCat
 3. Click the extension icon in the top right corner
+
+## Setting chunked image response compensation value
+For images received from server in a chunked procedure, most of the filesize can be computed via simply counting the chunks, however some is lost due to missing padding and header structure. 
+To change the value used to compensate for this missing data, change the constant value, CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT that is found in /content-js/state.js
