@@ -24,7 +24,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if(request.kind === 'original'){
       originalImages[request.url] = request.image;
     }else{
-      optimisedImages[request.url] = request.image; 
+      optimisedImages[request.url]= {
+        "image": request.image,
+        "isServiceWorkerImage": request.isServiceWorker
+      }
     }
 
   }
@@ -151,11 +154,21 @@ browser.runtime.onInstalled.addListener(() => {
 install_context_menus();
 
 
+chrome.webRequest.onErrorOccurred.addListener(function(details){
+  if(details.url in originalImages){
+    delete originalImages[details.url]
+  }
+  if(details.url in optimisedImages){
+    delete optimisedImages[details.url]
+  }
+
+},
+{urls: ["<all_urls>"]},
+);
+
 // listener for getting serviceWorker 
 chrome.webRequest.onCompleted.addListener(function(details){
   if (details.url in originalImages){
-    console.log(details.url);
-    console.log(details.responseHeaders);
     browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
@@ -176,26 +189,89 @@ chrome.webRequest.onCompleted.addListener(function(details){
                 console.error(error);
             })
   }
-  if (details.url in optimisedImages){
-    browser.tabs.query({ active: true, currentWindow: true })
-            .then(
-              (tabs) => {
-                if (tabs.length > 0) {
-                  return browser.tabs.sendMessage(tabs[0].id, { 
-                    headers: details.responseHeaders,
-                    image : optimisedImages[details.url],
-                    url : details.url,
-                    kind : "optimised" });
-                }
-              })
-              .then(()=>{
-                delete optimisedImages[details.url]
-              },
-              (error) => {
-                console.error("error sending headers")
-                console.error(error);
-            })
+    if (details.url in optimisedImages){
+      
+      if(optimisedImages[details.url]["isServiceWorkerImage"]){
+        if(details.tabId === -1 && details.frameId === -1){
+          browser.tabs.query({ active: true, currentWindow: true })
+                  .then(
+                    (tabs) => {
+                      if (tabs.length > 0) {
+                        return browser.tabs.sendMessage(tabs[0].id, { 
+                          headers: details.responseHeaders,
+                          image : optimisedImages[details.url]["image"],
+                          url : details.url,
+                          kind : "optimised" });
+                      }
+                    })
+                    .then(()=>{
+                      delete optimisedImages[details.url]
+                      if(Object.keys(optimisedImages).length === 0){
+                        browser.tabs.query({ active: true, currentWindow: true })
+                        .then(
+                          (tabs) => {
+                            browser.tabs.sendMessage(tabs[0].id, { 
+                              notification: "final image"});
+                          })
+                      }
+                    },
+                    (error) => {
+                      console.error("error sending headers")
+                      console.error(error);
+                  })
+        }else{
+          let filetype = new_filetype_from_headers(details.responseHeaders);
+          // filter out non-image requests
+          if (!(filetype.includes('image'))){
+            delete optimisedImages[details.url]
+          }
+        }
+      } else{
+        browser.tabs.query({ active: true, currentWindow: true })
+                .then(
+                  (tabs) => {
+                    if (tabs.length > 0) {
+                      return browser.tabs.sendMessage(tabs[0].id, { 
+                        headers: details.responseHeaders,
+                        image : optimisedImages[details.url]["image"],
+                        url : details.url,
+                        kind : "optimised" });
+                    }
+                  })
+                  .then((tabs)=>{
+                    delete optimisedImages[details.url]
+                    if(Object.keys(optimisedImages).length === 0){
+                      browser.tabs.query({ active: true, currentWindow: true })
+                      .then(
+                        (tabs) => {
+                        browser.tabs.sendMessage(tabs[0].id, { 
+                          notification: "final image"});
+                        })
+                    }
+                  },
+                  (error) => {
+                    console.error("error sending headers")
+                    console.error(error);
+                })
+      }
+
   }
 },
 {urls: ["<all_urls>"]},
-["responseHeaders"]);
+["responseHeaders", "extraHeaders"]);
+
+
+function new_filetype_from_headers(headers){
+  let result = null;
+  for (let
+      header_val_arr of headers.entries()) {
+      let [header_name, header_value] = header_val_arr;
+      let header = header_value["name"]
+      let value = header_value['value'];
+      if (header.match(/[Cc]ontent-[Tt]ype/)) {
+          result = value;
+          break;
+      }
+  }
+  return result; 
+}

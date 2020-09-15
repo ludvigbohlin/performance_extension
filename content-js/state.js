@@ -2,6 +2,10 @@
 // constant to define how much loss compensation to give chunked transfer encoded images
 const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
 
+
+// boolean to check whether some requests are chunked and thus require more time
+let isChunked = false;
+
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
 let currentView = null;
@@ -13,7 +17,7 @@ let imageDict = {};
 // function that iterates through images in DOM & returns original & optimised image sources
 function* iterateOnImages() {
     let images = document.querySelectorAll('*,img.lazyloaded');
-    let optimisationSource = '';
+    let isServiceWorkerImage = false;
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let originalUrl = new URL(im.currentSrc);
@@ -24,20 +28,23 @@ function* iterateOnImages() {
             // check if image is supported by the serviceWorker
             let optimised_image_url = getServiceWorkerUrl(originalUrl);
             if (optimised_image_url !== undefined){
-                optimisationSource = 'serviceWorker';
+                // isServiceWorkerImage = 'serviceWorker';
+                isServiceWorkerImage = true;
+
                 optimisedUrl = optimised_image_url;
-                populateUnoptimizedSizeModel(originalUrl, optimisationSource, im.src);
-                yield [im, originalUrl, optimisedUrl, optimisationSource];
+                populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
+                yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
             // else image optimisation is processed via origin
             }else{
+                // console.log("UNDEFINED");
                 optimisedUrl = originalUrl;
                 if (originalUrl.hostname === doc_hostname) {
-                    optimisationSource = 'origin'
-
+                    // isServiceWorkerImage = 'origin'
+                    isServiceWorkerImage = false;
                     // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im));  
-                    populateUnoptimizedSizeModel(originalUrl, optimisationSource, im.src);
-                    yield [im, originalUrl, optimisedUrl, optimisationSource];
+                    populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
+                    yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
                 }else {
                     continue;
                 }
@@ -54,20 +61,22 @@ function* iterateOnImages() {
             // check if image is supported by the serviceWorker
             let optimised_image_url = getServiceWorkerUrl(originalUrl);
             if (optimised_image_url !== undefined){
-                optimisationSource = 'serviceWorker';
+                // isServiceWorkerImage = 'serviceWorker';
+                isServiceWorkerImage = true;
                 optimisedUrl = optimised_image_url;
-                populateUnoptimizedSizeModel(originalUrl, optimisationSource, im.src);
-                yield [im, originalUrl, optimisedUrl, optimisationSource];
+                populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
+                yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
             // else image optimisation is processed via origin
             }else{
                 optimisedUrl = originalUrl;
                 if (originalUrl.hostname === doc_hostname) {
-                    optimisationSource = 'origin'
+                    // isServiceWorkerImage = 'origin'
+                    isServiceWorkerImage = false;
 
                     // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
-                    populateUnoptimizedSizeModel(originalUrl, optimisationSource, im.src); 
-                    yield [im, originalUrl, optimisedUrl, optimisationSource];
+                    populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src); 
+                    yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
                 // image compression not supported for the domain as it is not defined in serviceWorker and not the root url of the site
                 }else continue;
             }
@@ -80,12 +89,13 @@ function displaySelected(){
     imageDict = {};
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
-    for (let [im, originalUrl,optimisedUrl, optimisationSource] of iterateOnImages()) {
+    for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnImages()) {
     
         im.currentSrc = originalUrl;
         im.src = originalUrl;
+        // console.log(im.src);
 
-        urlPointsToStatus(optimisedUrl, optimisationSource, originalUrl);
+        urlPointsToStatus(optimisedUrl, isServiceWorkerImage, originalUrl);
     } 
 }
 
@@ -156,7 +166,8 @@ async function refreshSelectedView() {
         }
         // automated refresh & sending of data to popup.js
         // window.setTimeout(refreshSelectedView,   16000);
-        window.setTimeout(sendModelSummaries, 4000);
+        // window.setTimeout(sendModelSummaries, 4000);
+        // window.setTimeout(sendModelSummaries, 8000);
     }
 }
 
@@ -164,7 +175,8 @@ async function refreshSelectedView() {
 async function changeToSelected() {
     if (currentView !== "selected") {
         // automated refresh & sending of data to popup.js
-        window.setTimeout(sendModelSummaries, 4000);
+        // window.setTimeout(sendModelSummaries, 4000);
+        // window.setTimeout(sendModelSummaries, 8000);
         // window.setTimeout(refreshSelectedView, 16000);
     }
     currentView = "selected";
@@ -180,6 +192,7 @@ async function changeToSelected() {
 
 // function that sends data to popup.js
 function sendModelSummaries() {
+    console.log("isChunked? ", isChunked);
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
@@ -462,12 +475,12 @@ function new_filetype_from_headers(headers){
 
 
 // function that makes a request to the optimised url of each image which then gives status information and file size
-function urlPointsToStatus(url, optimisationSource, im) {
+function urlPointsToStatus(url, isServiceWorkerImage, im) {
     let mode = "cors";
     let headers = new Headers({
     });
 
-    if(optimisationSource === 'origin'){
+    if(!isServiceWorkerImage){
         mode = "same-origin";
         headers = new Headers({
             "cache-control": "no-cache",
@@ -493,9 +506,10 @@ function urlPointsToStatus(url, optimisationSource, im) {
         command: "imageTransfer",
         url: url,
         image: im,
-        kind: "optimised"
+        kind: "optimised",
+        isServiceWorker: isServiceWorkerImage
     }).then(
-        () => { console.log("message sent")},
+        () => { console.log("message sent")}, 
         () => { },
     );
 
@@ -557,8 +571,9 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
             }
         }
     }else{
-        console.log(url);
-        console.log(filetype);
+        isChunked = true;
+        // console.log(url);
+        // console.log(filetype);
         let mode = "cors";
         let headers = new Headers({
         });
@@ -609,12 +624,12 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
 }
 
 // function that makes a request to the original url of each image which then gives status information and file size
-function populateUnoptimizedSizeModel(url, optimisationSource, im) {
+function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
     let urlObj = new URL(url)
     let mode = "cors";
     let headers = new Headers({
     });
-    if(optimisationSource === 'origin'){
+    if(!isServiceWorkerImage){
         mode = "same-origin";
         headers = new Headers({
             "cache-control": "no-cache",
@@ -773,6 +788,18 @@ browser.runtime.onMessage.addListener(
             };
             handleImageHeadersCallback(data,url, im, kind);
             return { status: "ok" };
+        }
+
+        if(request.hasOwnProperty("notification")){
+            // all images have been processed, now set timeout
+            if(!isChunked){
+                // window.setTimeout(sendModelSummaries, 1000);
+                sendModelSummaries()
+            }else{
+                sendModelSummaries()
+                // window.setTimeout(sendModelSummaries, 1000);
+            }
+
         }
     }
 );
