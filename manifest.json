@@ -1,5 +1,5 @@
 {
-   "name": "DEV ShimmerCat Image Extension DEV",
+   "name": "ShimmerCat Image Extension",
    "version": "0.4",
    "description": "In-page statistics about image optimization",
    "manifest_version": 2,

@@ -28,7 +28,6 @@ function* iterateOnImages() {
             // check if image is supported by the serviceWorker
             let optimised_image_url = getServiceWorkerUrl(originalUrl);
             if (optimised_image_url !== undefined){
-                // isServiceWorkerImage = 'serviceWorker';
                 isServiceWorkerImage = true;
 
                 optimisedUrl = optimised_image_url;
@@ -36,10 +35,8 @@ function* iterateOnImages() {
                 yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
             // else image optimisation is processed via origin
             }else{
-                // console.log("UNDEFINED");
                 optimisedUrl = originalUrl;
                 if (originalUrl.hostname === doc_hostname) {
-                    // isServiceWorkerImage = 'origin'
                     isServiceWorkerImage = false;
                     // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im));  
@@ -192,7 +189,6 @@ async function changeToSelected() {
 
 // function that sends data to popup.js
 function sendModelSummaries() {
-    console.log("isChunked? ", isChunked);
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
@@ -324,68 +320,8 @@ function canUseUrl(url) {
 }
 
 
-// unused function, will leave in case it is needed later
-function isWEBPFile(arrayBuffer) {
-    let byteArray = new Uint8Array(arrayBuffer);
-
-    let b0 = byteArray[0];
-    let b1 = byteArray[1];
-    let b2 = byteArray[2];
-    let b3 = byteArray[3];
-
-    let b8 = byteArray[8];
-    let b9 = byteArray[9];
-    let b10 = byteArray[10];
-    let b11 = byteArray[11];
-
-    let riff = "RIFF";
-    let webp = "WEBP";
-    let result =
-        (
-            (
-                (b0 === riff.charCodeAt(0)) &&
-                (b1 === riff.charCodeAt(1)) &&
-                (b2 === riff.charCodeAt(2)) &&
-                (b3 === riff.charCodeAt(3))
-            )
-            &&
-            (
-                (b8 === webp.charCodeAt(0)) &&
-                (b9 === webp.charCodeAt(1)) &&
-                (b10 === webp.charCodeAt(2)) &&
-                (b11 === webp.charCodeAt(3))
-            )
-        );
-    return result;
-}
-
 // function that reads header values for a given image and determines the status of the image and how it will be visualised 
-function image_opt_status_from_headers(response) {
-    let headers_status = null;
-    for (let
-        /** @type String[] */
-        header_val_arr of response.headers.entries()) {
-        let [header_name, header_value] = header_val_arr;
-
-        if (header_name === "sc-note") {
-            if (header_value.includes("webp0=nv")) {
-                headers_status = 'non-viable';
-                break;
-            } else if (header_value.includes("webp0=ip")) {
-                headers_status = 'in-processing'
-                break;
-            } else if (header_value.includes("webp0=re")) {
-                headers_status = 'ready'
-                break;
-            }
-            else {
-            }
-        }
-    }
-    return headers_status;
-}
-
-function new_image_opt_status_from_headers(headers) {
+function image_opt_status_from_headers(headers) {
     let headers_status = null;
     for (let
         /** @type String[] */
@@ -413,21 +349,7 @@ function new_image_opt_status_from_headers(headers) {
 }
 
 // function that reads header values for a given image and determines the file size of the image for computing compression amount  
-function size_from_headers(response) {
-    let result = null;
-    for (let
-        /** @type String[] */
-        header_val_arr of response.headers.entries()) {
-        let [header_name, header_value] = header_val_arr;
-        if (header_name.match(/[Cc]ontent-[Ll]ength/)) {
-            result = Number(header_value);
-            break;
-        }
-    }
-    return result;
-}
-
-function new_size_from_headers(headers) {
+function size_from_headers(headers) {
     let result = null;
     for (let
         /** @type String[] */
@@ -444,21 +366,7 @@ function new_size_from_headers(headers) {
 }
 
 // function that reads header values for a given image and determines the filetype of the image for filetype analytics  
-function filetype_from_headers(response){
-    let result = null;
-    for (let
-        /** @type String[] */
-        header_val_arr of response.headers.entries()) {
-        let [header_name, header_value] = header_val_arr;
-        if (header_name.match(/[Cc]ontent-[Tt]ype/)) {
-            result = header_value;
-            break;
-        }
-    }
-    return result; 
-}
-
-function new_filetype_from_headers(headers){
+function filetype_from_headers(headers){
     let result = null;
     for (let
         header_val_arr of headers.entries()) {
@@ -534,9 +442,6 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
     let status = data.status;
     let transfer_size = data.size;
     let filetype = data.filetype;
-    if(kind==='original'){
-        // console.log(filetype);
-    }
     if (im !== undefined){
         removeCustomStyles(im);
         if (status === "ready") {
@@ -572,8 +477,6 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
         }
     }else{
         isChunked = true;
-        // console.log(url);
-        // console.log(filetype);
         let mode = "cors";
         let headers = new Headers({
         });
@@ -612,7 +515,7 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                 return;
             } 
             else{
-                console.error("not 200");
+                console.error("Request failed");
                 return;
             }
         })
@@ -774,12 +677,12 @@ browser.runtime.onMessage.addListener(
             let url = request.url;
             let kind = request. kind;
             // get image status
-            let headers_status = new_image_opt_status_from_headers(headers);
+            let headers_status = image_opt_status_from_headers(headers);
             // get image size
-            let indicated_size = new_size_from_headers(headers);
+            let indicated_size = size_from_headers(headers);
 
             // get image filetype
-            let filetype = new_filetype_from_headers(headers);
+            let filetype = filetype_from_headers(headers);
 
             let data = {
                 "status": headers_status,

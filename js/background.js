@@ -166,13 +166,15 @@ chrome.webRequest.onErrorOccurred.addListener(function(details){
 {urls: ["<all_urls>"]},
 );
 
-// listener for getting serviceWorker 
+// listener for getting response headers from image requests
 chrome.webRequest.onCompleted.addListener(function(details){
+  // if original image
   if (details.url in originalImages){
     browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
                 if (tabs.length > 0) {
+                  // send headers to state.js 
                   return browser.tabs.sendMessage(tabs[0].id, { 
                     headers: details.responseHeaders,
                     image : originalImages[details.url],
@@ -182,6 +184,7 @@ chrome.webRequest.onCompleted.addListener(function(details){
               })
               .then(
                 ()=>{
+                //delete image
                 delete originalImages[details.url];  
               },
               (error) => {
@@ -189,48 +192,16 @@ chrome.webRequest.onCompleted.addListener(function(details){
                 console.error(error);
             })
   }
-    if (details.url in optimisedImages){
-      
-      if(optimisedImages[details.url]["isServiceWorkerImage"]){
-        if(details.tabId === -1 && details.frameId === -1){
-          browser.tabs.query({ active: true, currentWindow: true })
-                  .then(
-                    (tabs) => {
-                      if (tabs.length > 0) {
-                        return browser.tabs.sendMessage(tabs[0].id, { 
-                          headers: details.responseHeaders,
-                          image : optimisedImages[details.url]["image"],
-                          url : details.url,
-                          kind : "optimised" });
-                      }
-                    })
-                    .then(()=>{
-                      delete optimisedImages[details.url]
-                      if(Object.keys(optimisedImages).length === 0){
-                        browser.tabs.query({ active: true, currentWindow: true })
-                        .then(
-                          (tabs) => {
-                            browser.tabs.sendMessage(tabs[0].id, { 
-                              notification: "final image"});
-                          })
-                      }
-                    },
-                    (error) => {
-                      console.error("error sending headers")
-                      console.error(error);
-                  })
-        }else{
-          let filetype = new_filetype_from_headers(details.responseHeaders);
-          // filter out non-image requests
-          if (!(filetype.includes('image'))){
-            delete optimisedImages[details.url]
-          }
-        }
-      } else{
+  // if optimised image
+  if (details.url in optimisedImages){
+    // if it is a serviceWorker image
+    if(optimisedImages[details.url]["isServiceWorkerImage"]){
+      if(details.tabId === -1 && details.frameId === -1){
         browser.tabs.query({ active: true, currentWindow: true })
                 .then(
                   (tabs) => {
                     if (tabs.length > 0) {
+                      // send headers to state.js 
                       return browser.tabs.sendMessage(tabs[0].id, { 
                         headers: details.responseHeaders,
                         image : optimisedImages[details.url]["image"],
@@ -238,14 +209,16 @@ chrome.webRequest.onCompleted.addListener(function(details){
                         kind : "optimised" });
                     }
                   })
-                  .then((tabs)=>{
+                  .then(()=>{
+                    //delete image
                     delete optimisedImages[details.url]
+                    //check if we have processed all images, if we have notify state.js to show model data
                     if(Object.keys(optimisedImages).length === 0){
                       browser.tabs.query({ active: true, currentWindow: true })
                       .then(
                         (tabs) => {
-                        browser.tabs.sendMessage(tabs[0].id, { 
-                          notification: "final image"});
+                          browser.tabs.sendMessage(tabs[0].id, { 
+                            notification: "final image"});
                         })
                     }
                   },
@@ -253,14 +226,51 @@ chrome.webRequest.onCompleted.addListener(function(details){
                     console.error("error sending headers")
                     console.error(error);
                 })
+      }else{
+        // filter out non-image requests that slip through (bliz)
+        let filetype = new_filetype_from_headers(details.responseHeaders);
+        if (!(filetype.includes('image'))){
+          delete optimisedImages[details.url]
+        }
       }
-
+    } else{
+      // non-serviceworker optimised image
+      browser.tabs.query({ active: true, currentWindow: true })
+              .then(
+                (tabs) => {
+                  if (tabs.length > 0) {
+                    // send headers to state.js 
+                    return browser.tabs.sendMessage(tabs[0].id, { 
+                      headers: details.responseHeaders,
+                      image : optimisedImages[details.url]["image"],
+                      url : details.url,
+                      kind : "optimised" });
+                  }
+                })
+                .then((tabs)=>{
+                  //delete image
+                  delete optimisedImages[details.url]
+                  //check if we have processed all images, if we have notify state.js to show model data
+                  if(Object.keys(optimisedImages).length === 0){
+                    browser.tabs.query({ active: true, currentWindow: true })
+                    .then(
+                      (tabs) => {
+                      browser.tabs.sendMessage(tabs[0].id, { 
+                        notification: "final image"});
+                      })
+                  }
+                },
+                (error) => {
+                  console.error("error sending headers")
+                  console.error(error);
+              })
+    }
   }
 },
 {urls: ["<all_urls>"]},
 ["responseHeaders", "extraHeaders"]);
 
-
+//function to get filetype from headers to filter out non-image requests
 function new_filetype_from_headers(headers){
   let result = null;
   for (let
