@@ -24,7 +24,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if(request.kind === 'original'){
       originalImages[request.url] = request.image;
     }else{
-      optimisedImages[request.url] = request.image; 
+      optimisedImages[request.url]= {
+        "image": request.image,
+        "isServiceWorkerImage": request.isServiceWorker
+      }
     }
 
   }
@@ -151,13 +154,27 @@ browser.runtime.onInstalled.addListener(() => {
 install_context_menus();
 
 
-// listener for getting serviceWorker 
+chrome.webRequest.onErrorOccurred.addListener(function(details){
+  if(details.url in originalImages){
+    delete originalImages[details.url]
+  }
+  if(details.url in optimisedImages){
+    delete optimisedImages[details.url]
+  }
+
+},
+{urls: ["<all_urls>"]},
+);
+
+// listener for getting response headers from image requests
 chrome.webRequest.onCompleted.addListener(function(details){
+  // if original image
   if (details.url in originalImages){
     browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
                 if (tabs.length > 0) {
+                  // send headers to state.js 
                   return browser.tabs.sendMessage(tabs[0].id, { 
                     headers: details.responseHeaders,
                     image : originalImages[details.url],
@@ -167,6 +184,7 @@ chrome.webRequest.onCompleted.addListener(function(details){
               })
               .then(
                 ()=>{
+                //delete image
                 delete originalImages[details.url];  
               },
               (error) => {
@@ -174,26 +192,96 @@ chrome.webRequest.onCompleted.addListener(function(details){
                 console.error(error);
             })
   }
+  // if optimised image
   if (details.url in optimisedImages){
-    browser.tabs.query({ active: true, currentWindow: true })
-            .then(
-              (tabs) => {
-                if (tabs.length > 0) {
-                  return browser.tabs.sendMessage(tabs[0].id, { 
-                    headers: details.responseHeaders,
-                    image : optimisedImages[details.url],
-                    url : details.url,
-                    kind : "optimised" });
-                }
+    // if it is a serviceWorker image
+    if(optimisedImages[details.url]["isServiceWorkerImage"]){
+      if(details.tabId === -1 && details.frameId === -1){
+        browser.tabs.query({ active: true, currentWindow: true })
+                .then(
+                  (tabs) => {
+                    if (tabs.length > 0) {
+                      // send headers to state.js 
+                      return browser.tabs.sendMessage(tabs[0].id, { 
+                        headers: details.responseHeaders,
+                        image : optimisedImages[details.url]["image"],
+                        url : details.url,
+                        kind : "optimised" });
+                    }
+                  })
+                  .then(()=>{
+                    //delete image
+                    delete optimisedImages[details.url]
+                    //check if we have processed all images, if we have notify state.js to show model data
+                    if(Object.keys(optimisedImages).length === 0){
+                      browser.tabs.query({ active: true, currentWindow: true })
+                      .then(
+                        (tabs) => {
+                          browser.tabs.sendMessage(tabs[0].id, { 
+                            notification: "final image"});
+                        })
+                    }
+                  },
+                  (error) => {
+                    console.error("error sending headers")
+                    console.error(error);
+                })
+      }else{
+        // filter out non-image requests that slip through (bliz)
+        let filetype = new_filetype_from_headers(details.responseHeaders);
+        if (!(filetype.includes('image'))){
+          delete optimisedImages[details.url]
+        }
+      }
+    } else{
+      // non-serviceworker optimised image
+      browser.tabs.query({ active: true, currentWindow: true })
+              .then(
+                (tabs) => {
+                  if (tabs.length > 0) {
+                    // send headers to state.js 
+                    return browser.tabs.sendMessage(tabs[0].id, { 
+                      headers: details.responseHeaders,
+                      image : optimisedImages[details.url]["image"],
+                      url : details.url,
+                      kind : "optimised" });
+                  }
+                })
+                .then((tabs)=>{
+                  //delete image
+                  delete optimisedImages[details.url]
+                  //check if we have processed all images, if we have notify state.js to show model data
+                  if(Object.keys(optimisedImages).length === 0){
+                    browser.tabs.query({ active: true, currentWindow: true })
+                    .then(
+                      (tabs) => {
+                      browser.tabs.sendMessage(tabs[0].id, { 
+                        notification: "final image"});
+                      })
+                  }
+                },
+                (error) => {
+                  console.error("error sending headers")
+                  console.error(error);
               })
-              .then(()=>{
-                delete optimisedImages[details.url]
-              },
-              (error) => {
-                console.error("error sending headers")
-                console.error(error);
-            })
+    }
   }
 },
 {urls: ["<all_urls>"]},
-["responseHeaders"]);
+["responseHeaders", "extraHeaders"]);
+
+//function to get filetype from headers to filter out non-image requests
+function new_filetype_from_headers(headers){
+  let result = null;
+  for (let
+      header_val_arr of headers.entries()) {
+      let [header_name, header_value] = header_val_arr;
+      let header = header_value["name"]
+      let value = header_value['value'];
+      if (header.match(/[Cc]ontent-[Tt]ype/)) {
+          result = value;
+          break;
+      }
+  }
+  return result; 
+}

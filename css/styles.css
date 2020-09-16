@@ -317,11 +317,20 @@ table, th, td {
     cursor: pointer;
 }
 
-#popover-div{
+.popover-div{
     background-color: white;
     border: 2px solid black;
     padding: 2%;
-    margin-right: 5%;
+    
+}
+
+#selection{
+    margin-right: 10%;
+}
+
+#cors{
+    margin-right: 20%;
+    margin-bottom: 40%;
 }
 .label-align{
     margin-top: 5%;
