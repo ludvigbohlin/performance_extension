@@ -700,8 +700,8 @@ browser.runtime.onMessage.addListener(
             // all images have been processed, now set timeout
             if(canSendModels){
                 if(!isChunked){
-                    // window.setTimeout(sendModelSummaries, 1000);
-                    sendModelSummaries()
+                    window.setTimeout(sendModelSummaries, 2000);
+                    // sendModelSummaries()
                 }else{
                     // sendModelSummaries()
                     window.setTimeout(sendModelSummaries, 3000);
