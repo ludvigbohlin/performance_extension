@@ -188,7 +188,7 @@ chrome.webRequest.onCompleted.addListener(function(details){
                 delete originalImages[details.url];  
               },
               (error) => {
-                console.error("error sending headers")
+                console.error("error sending headers for: ", details.url);
                 console.error(error);
             })
   }
@@ -261,8 +261,8 @@ chrome.webRequest.onCompleted.addListener(function(details){
                   }
                 },
                 (error) => {
-                  console.error("error sending headers")
-                  console.error(error);
+                  // console.error("error sending headers for: ", details.url);
+                  // console.error(error);
               })
     }
   }

@@ -5,6 +5,8 @@ const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
 
 // boolean to check whether some requests are chunked and thus require more time
 let isChunked = false;
+// boolean to check if we have manipulated DOM by changing view and thus mutating all selectors
+let canSendModels = true;
 
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
@@ -21,7 +23,7 @@ function* iterateOnImages() {
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let originalUrl = new URL(im.currentSrc);
-            imageDict[originalUrl] = im;
+            let noHapsUrl = originalUrl.origin + originalUrl.pathname + stripHAPsSearchParam(originalUrl.search); 
             let optimisedUrl = '';
             let doc_hostname = document.location.hostname;
 
@@ -31,11 +33,13 @@ function* iterateOnImages() {
                 isServiceWorkerImage = true;
 
                 optimisedUrl = optimised_image_url;
+                imageDict[optimisedUrl] = im;
                 populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
                 yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
             // else image optimisation is processed via origin
             }else{
-                optimisedUrl = originalUrl;
+                optimisedUrl = originalURLOfImage(im);
+                imageDict[noHapsUrl] = im;
                 if (originalUrl.hostname === doc_hostname) {
                     isServiceWorkerImage = false;
                     // remove HAPS compression
@@ -65,7 +69,8 @@ function* iterateOnImages() {
                 yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
             // else image optimisation is processed via origin
             }else{
-                optimisedUrl = originalUrl;
+                // optimisedUrl = originalUrl;
+                optimisedUrl = originalURLOfImage(im);
                 if (originalUrl.hostname === doc_hostname) {
                     // isServiceWorkerImage = 'origin'
                     isServiceWorkerImage = false;
@@ -90,7 +95,6 @@ function displaySelected(){
     
         im.currentSrc = originalUrl;
         im.src = originalUrl;
-        // console.log(im.src);
 
         urlPointsToStatus(optimisedUrl, isServiceWorkerImage, originalUrl);
     } 
@@ -239,6 +243,7 @@ function removeCustomStyles(im_element) {
 
 // function that changes the view to optimised images only 
 function changeToOptimized() {
+    canSendModels = false;
     currentView = 'optimized';
     let images = document.querySelectorAll('*,img.lazyloaded');
 
@@ -409,7 +414,6 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
     let prom = fetch(fetch_request);
 
     // notify background.js of the url we want to monitor
-    
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
@@ -552,7 +556,6 @@ function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
 
 
     // notify background.js of the url we want to monitor
-    
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
@@ -605,13 +608,13 @@ function originalURLOfImage(im) {
 
 // change images to unoptimized versions
 function changeToUnoptimized() {
+    canSendModels = false;
     currentView = "unoptimized";
     let images = document.querySelectorAll("*,img.lazyloaded");
     images.forEach((im) => {
-        const from_url = im.currentSrc;
         // remove styles
         removeCustomStyles(im);
-
+        const from_url = im.currentSrc;
         if (canUseUrl(from_url)) {
             let url = new URL(im.currentSrc);
             let doc_hostname = document.location.hostname;
@@ -640,12 +643,12 @@ function getOriginalFromServiceWorkerUrl(url){
     domains = Object.values(serviceWorkerDomains);
     if (host in domains){
         const originalDomain = Object.keys(domains).find(key => domains[key] === host);
-        return "https://" + originalDomain + urlObj.pathname + urlObj.search;
+        return "https://" + Object.keys(serviceWorkerDomains)[originalDomain] + urlObj.pathname + urlObj.search;
     }else{
         for (const domain of domains){
             if (domain.includes(host) || host.includes(domain)){
                 const originalDomain = Object.keys(domains).find(key => domains[key] === host);
-                return "https://" + originalDomain + urlObj.pathname + urlObj.search;
+                return "https://" + Object.keys(serviceWorkerDomains)[originalDomain] + urlObj.pathname + urlObj.search;
             }
         }
         return undefined
@@ -695,13 +698,15 @@ browser.runtime.onMessage.addListener(
 
         if(request.hasOwnProperty("notification")){
             // all images have been processed, now set timeout
-            if(!isChunked){
-                // window.setTimeout(sendModelSummaries, 1000);
-                sendModelSummaries()
-            }else{
-                sendModelSummaries()
-                // window.setTimeout(sendModelSummaries, 1000);
-            }
+            if(canSendModels){
+                if(!isChunked){
+                    // window.setTimeout(sendModelSummaries, 1000);
+                    sendModelSummaries()
+                }else{
+                    // sendModelSummaries()
+                    window.setTimeout(sendModelSummaries, 3000);
+                }
+        }
 
         }
     }
