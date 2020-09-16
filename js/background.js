@@ -28,7 +28,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         "image": request.image,
         "isServiceWorkerImage": request.isServiceWorker
       }
-      console.log(request.image);
     }
 
   }
@@ -240,7 +239,6 @@ chrome.webRequest.onCompleted.addListener(function(details){
               .then(
                 (tabs) => {
                   if (tabs.length > 0) {
-                    console.log(details);
                     // send headers to state.js 
                     return browser.tabs.sendMessage(tabs[0].id, { 
                       headers: details.responseHeaders,

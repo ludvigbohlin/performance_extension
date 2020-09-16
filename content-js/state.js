@@ -23,10 +23,7 @@ function* iterateOnImages() {
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let originalUrl = new URL(im.currentSrc);
-            // console.log(originalUrl);
             let noHapsUrl = originalUrl.origin + originalUrl.pathname + stripHAPsSearchParam(originalUrl.search); 
-            // imageDict[originalUrl] = im;
-            // imageDict[noHapsUrl] = im;
             let optimisedUrl = '';
             let doc_hostname = document.location.hostname;
 
@@ -47,8 +44,6 @@ function* iterateOnImages() {
                     isServiceWorkerImage = false;
                     // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im));  
-                    // console.log("original: ", originalUrl);
-                    // console.log("optimised: ", optimisedUrl);
                     populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
                     yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
                 }else {
@@ -93,15 +88,6 @@ function* iterateOnImages() {
 
 // function that displays various styles based on the status of the image
 function displaySelected(){
-    // window.location = window.location;
-    // location.replace(location.href.split('#')[0]);
-    // let myDocument = document;
-    // if (originalHTML.length !== 0){
-    //     console.log("restoring document!!!!");
-    //     document = originalHTML
-    // }else{
-    //     originalHTML = document.cloneNode(true);
-    // }
     imageDict = {};
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
@@ -109,7 +95,6 @@ function displaySelected(){
     
         im.currentSrc = originalUrl;
         im.src = originalUrl;
-        // console.log(im.src);
 
         urlPointsToStatus(optimisedUrl, isServiceWorkerImage, originalUrl);
     } 
@@ -208,10 +193,6 @@ async function changeToSelected() {
 
 // function that sends data to popup.js
 function sendModelSummaries() {
-    console.log("sending models");
-    console.log(optimizedSizeModel);
-    console.log(unoptimizedSizeModel);
-    console.log(imageDict);
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
@@ -433,8 +414,6 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
     let prom = fetch(fetch_request);
 
     // notify background.js of the url we want to monitor
-    
-    // console.log(url);
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
@@ -461,10 +440,6 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
 function handleImageHeadersCallback(data,url, imageSource, kind){
     let urlObj = new URL(url); 
     let im = imageDict[urlObj]
-    // console.log(url);
-    // console.log(data);
-    // console.log(im);
-    // console.log(imageSource);
     let h = highlightAsWebp.bind(null, im);
     let g = highlightAsProcessing.bind(null, im);
     let i = highlightAsNonViable.bind(null, im);
@@ -483,8 +458,6 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
             im.classList.remove("scbca-gray");
             g();
         } else {
-            // console.log(status);
-            // console.log(url);
             im.classList.add("scbca-gray");
         }  
     }  
@@ -526,7 +499,6 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
         .then(async function (response){
             if (response.status === 200) {
                 transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
-                console.log("chunked transfer_szie: ", transfer_size);
 
                 if(filetype.includes("image")){
                     if (kind == 'original'){
@@ -584,8 +556,6 @@ function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
 
 
     // notify background.js of the url we want to monitor
-    // console.log(im);
-    
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
@@ -623,7 +593,6 @@ function toNoHAPsURL(original_url) {
 
 // function for getting the original url of an image using haps
 function originalURLOfImage(im) {
-    // console.log(im);
     let dataset = im.dataset;
     if (dataset.hasOwnProperty("scbOriginalLocation")) {
     }
@@ -654,8 +623,6 @@ function changeToUnoptimized() {
             if (optimised_image_url !== undefined){
                 //shimmercat.cloud -> original url 
                 im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
-                // console.log(optimised_image_url);
-                // console.log(im.src);
             }else{
                 if (url.hostname === doc_hostname) {
                     let original_url = originalURLOfImage(im);
@@ -674,7 +641,6 @@ function getOriginalFromServiceWorkerUrl(url){
     let urlObj = new URL(url)
     var host = urlObj.host;
     domains = Object.values(serviceWorkerDomains);
-    // console.log(serviceWorkerDomains);
     if (host in domains){
         const originalDomain = Object.keys(domains).find(key => domains[key] === host);
         return "https://" + Object.keys(serviceWorkerDomains)[originalDomain] + urlObj.pathname + urlObj.search;
@@ -737,8 +703,8 @@ browser.runtime.onMessage.addListener(
                     // window.setTimeout(sendModelSummaries, 1000);
                     sendModelSummaries()
                 }else{
-                    sendModelSummaries()
-                    // window.setTimeout(sendModelSummaries, 3000);
+                    // sendModelSummaries()
+                    window.setTimeout(sendModelSummaries, 3000);
                 }
         }
 
