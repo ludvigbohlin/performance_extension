@@ -5,6 +5,8 @@ const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
 
 // boolean to check whether some requests are chunked and thus require more time
 let isChunked = false;
+// boolean to check if we have manipulated DOM by changing view and thus mutating all selectors
+let canSendModels = true;
 
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
@@ -24,9 +26,7 @@ function* iterateOnImages() {
             // console.log(originalUrl);
             let noHapsUrl = originalUrl.origin + originalUrl.pathname + stripHAPsSearchParam(originalUrl.search); 
             // imageDict[originalUrl] = im;
-            console.log("originalUrl: ",originalUrl)
-            console.log("noHapsUrl: ",noHapsUrl)
-            imageDict[noHapsUrl] = im;
+            // imageDict[noHapsUrl] = im;
             let optimisedUrl = '';
             let doc_hostname = document.location.hostname;
 
@@ -36,13 +36,13 @@ function* iterateOnImages() {
                 isServiceWorkerImage = true;
 
                 optimisedUrl = optimised_image_url;
+                imageDict[optimisedUrl] = im;
                 populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
                 yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
             // else image optimisation is processed via origin
             }else{
-                // let urlObj = new URL(originalUrl)
-                // optimisedUrl = new URL(stripHAPsSearchParam(urlObj                    ));
                 optimisedUrl = originalURLOfImage(im);
+                imageDict[noHapsUrl] = im;
                 if (originalUrl.hostname === doc_hostname) {
                     isServiceWorkerImage = false;
                     // remove HAPS compression
@@ -93,6 +93,15 @@ function* iterateOnImages() {
 
 // function that displays various styles based on the status of the image
 function displaySelected(){
+    // window.location = window.location;
+    // location.replace(location.href.split('#')[0]);
+    // let myDocument = document;
+    // if (originalHTML.length !== 0){
+    //     console.log("restoring document!!!!");
+    //     document = originalHTML
+    // }else{
+    //     originalHTML = document.cloneNode(true);
+    // }
     imageDict = {};
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
@@ -253,6 +262,7 @@ function removeCustomStyles(im_element) {
 
 // function that changes the view to optimised images only 
 function changeToOptimized() {
+    canSendModels = false;
     currentView = 'optimized';
     let images = document.querySelectorAll('*,img.lazyloaded');
 
@@ -424,7 +434,7 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
 
     // notify background.js of the url we want to monitor
     
-    console.log(url);
+    // console.log(url);
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
@@ -516,6 +526,7 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
         .then(async function (response){
             if (response.status === 200) {
                 transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
+                console.log("chunked transfer_szie: ", transfer_size);
 
                 if(filetype.includes("image")){
                     if (kind == 'original'){
@@ -628,6 +639,7 @@ function originalURLOfImage(im) {
 
 // change images to unoptimized versions
 function changeToUnoptimized() {
+    canSendModels = false;
     currentView = "unoptimized";
     let images = document.querySelectorAll("*,img.lazyloaded");
     images.forEach((im) => {
@@ -720,13 +732,15 @@ browser.runtime.onMessage.addListener(
 
         if(request.hasOwnProperty("notification")){
             // all images have been processed, now set timeout
-            if(!isChunked){
-                // window.setTimeout(sendModelSummaries, 1000);
-                sendModelSummaries()
-            }else{
-                sendModelSummaries()
-                // window.setTimeout(sendModelSummaries, 1000);
-            }
+            if(canSendModels){
+                if(!isChunked){
+                    // window.setTimeout(sendModelSummaries, 1000);
+                    sendModelSummaries()
+                }else{
+                    sendModelSummaries()
+                    // window.setTimeout(sendModelSummaries, 3000);
+                }
+        }
 
         }
     }
