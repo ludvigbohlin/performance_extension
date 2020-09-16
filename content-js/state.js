@@ -21,7 +21,12 @@ function* iterateOnImages() {
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
             let originalUrl = new URL(im.currentSrc);
-            imageDict[originalUrl] = im;
+            // console.log(originalUrl);
+            let noHapsUrl = originalUrl.origin + originalUrl.pathname + stripHAPsSearchParam(originalUrl.search); 
+            // imageDict[originalUrl] = im;
+            console.log("originalUrl: ",originalUrl)
+            console.log("noHapsUrl: ",noHapsUrl)
+            imageDict[noHapsUrl] = im;
             let optimisedUrl = '';
             let doc_hostname = document.location.hostname;
 
@@ -35,11 +40,15 @@ function* iterateOnImages() {
                 yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
             // else image optimisation is processed via origin
             }else{
-                optimisedUrl = originalUrl;
+                // let urlObj = new URL(originalUrl)
+                // optimisedUrl = new URL(stripHAPsSearchParam(urlObj                    ));
+                optimisedUrl = originalURLOfImage(im);
                 if (originalUrl.hostname === doc_hostname) {
                     isServiceWorkerImage = false;
                     // remove HAPS compression
                     originalUrl = toNoHAPsURL(originalURLOfImage(im));  
+                    // console.log("original: ", originalUrl);
+                    // console.log("optimised: ", optimisedUrl);
                     populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
                     yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
                 }else {
@@ -65,7 +74,8 @@ function* iterateOnImages() {
                 yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
             // else image optimisation is processed via origin
             }else{
-                optimisedUrl = originalUrl;
+                // optimisedUrl = originalUrl;
+                optimisedUrl = originalURLOfImage(im);
                 if (originalUrl.hostname === doc_hostname) {
                     // isServiceWorkerImage = 'origin'
                     isServiceWorkerImage = false;
@@ -189,6 +199,10 @@ async function changeToSelected() {
 
 // function that sends data to popup.js
 function sendModelSummaries() {
+    console.log("sending models");
+    console.log(optimizedSizeModel);
+    console.log(unoptimizedSizeModel);
+    console.log(imageDict);
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
@@ -410,6 +424,7 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
 
     // notify background.js of the url we want to monitor
     
+    console.log(url);
     browser.runtime.sendMessage({
         command: "imageTransfer",
         url: url,
@@ -436,6 +451,10 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
 function handleImageHeadersCallback(data,url, imageSource, kind){
     let urlObj = new URL(url); 
     let im = imageDict[urlObj]
+    // console.log(url);
+    // console.log(data);
+    // console.log(im);
+    // console.log(imageSource);
     let h = highlightAsWebp.bind(null, im);
     let g = highlightAsProcessing.bind(null, im);
     let i = highlightAsNonViable.bind(null, im);
@@ -454,6 +473,8 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
             im.classList.remove("scbca-gray");
             g();
         } else {
+            // console.log(status);
+            // console.log(url);
             im.classList.add("scbca-gray");
         }  
     }  
@@ -552,6 +573,7 @@ function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
 
 
     // notify background.js of the url we want to monitor
+    // console.log(im);
     
     browser.runtime.sendMessage({
         command: "imageTransfer",
@@ -590,6 +612,7 @@ function toNoHAPsURL(original_url) {
 
 // function for getting the original url of an image using haps
 function originalURLOfImage(im) {
+    // console.log(im);
     let dataset = im.dataset;
     if (dataset.hasOwnProperty("scbOriginalLocation")) {
     }
@@ -608,10 +631,9 @@ function changeToUnoptimized() {
     currentView = "unoptimized";
     let images = document.querySelectorAll("*,img.lazyloaded");
     images.forEach((im) => {
-        const from_url = im.currentSrc;
         // remove styles
         removeCustomStyles(im);
-
+        const from_url = im.currentSrc;
         if (canUseUrl(from_url)) {
             let url = new URL(im.currentSrc);
             let doc_hostname = document.location.hostname;
@@ -620,6 +642,8 @@ function changeToUnoptimized() {
             if (optimised_image_url !== undefined){
                 //shimmercat.cloud -> original url 
                 im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
+                // console.log(optimised_image_url);
+                // console.log(im.src);
             }else{
                 if (url.hostname === doc_hostname) {
                     let original_url = originalURLOfImage(im);
@@ -638,14 +662,15 @@ function getOriginalFromServiceWorkerUrl(url){
     let urlObj = new URL(url)
     var host = urlObj.host;
     domains = Object.values(serviceWorkerDomains);
+    // console.log(serviceWorkerDomains);
     if (host in domains){
         const originalDomain = Object.keys(domains).find(key => domains[key] === host);
-        return "https://" + originalDomain + urlObj.pathname + urlObj.search;
+        return "https://" + Object.keys(serviceWorkerDomains)[originalDomain] + urlObj.pathname + urlObj.search;
     }else{
         for (const domain of domains){
             if (domain.includes(host) || host.includes(domain)){
                 const originalDomain = Object.keys(domains).find(key => domains[key] === host);
-                return "https://" + originalDomain + urlObj.pathname + urlObj.search;
+                return "https://" + Object.keys(serviceWorkerDomains)[originalDomain] + urlObj.pathname + urlObj.search;
             }
         }
         return undefined

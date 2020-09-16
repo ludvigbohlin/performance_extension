@@ -28,6 +28,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         "image": request.image,
         "isServiceWorkerImage": request.isServiceWorker
       }
+      console.log(request.image);
     }
 
   }
@@ -188,7 +189,7 @@ chrome.webRequest.onCompleted.addListener(function(details){
                 delete originalImages[details.url];  
               },
               (error) => {
-                console.error("error sending headers")
+                console.error("error sending headers for: ", details.url);
                 console.error(error);
             })
   }
@@ -239,6 +240,7 @@ chrome.webRequest.onCompleted.addListener(function(details){
               .then(
                 (tabs) => {
                   if (tabs.length > 0) {
+                    console.log(details);
                     // send headers to state.js 
                     return browser.tabs.sendMessage(tabs[0].id, { 
                       headers: details.responseHeaders,
@@ -261,8 +263,8 @@ chrome.webRequest.onCompleted.addListener(function(details){
                   }
                 },
                 (error) => {
-                  console.error("error sending headers")
-                  console.error(error);
+                  // console.error("error sending headers for: ", details.url);
+                  // console.error(error);
               })
     }
   }
