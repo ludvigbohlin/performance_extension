@@ -63,8 +63,8 @@ function summarizeImagesModel(images_summary_input) {
     // if original, optimised image count is not equal
     if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length ){
         console.log("error");
-        console.log("unoptimised: ",  Object.keys(images_summary_input.unoptimized).length);
-        console.log("optimised: ",  Object.keys(images_summary_input.optimized).length);
+        // console.log("unoptimised: ",  Object.keys(images_summary_input.unoptimized).length);
+        // console.log("optimised: ",  Object.keys(images_summary_input.optimized).length);
         vue_data['cors_error'] = true;
         // get number of serviceworker images that are not in original images but are in optimised
         let cors_error_number = 0;

@@ -199,7 +199,6 @@ chrome.webRequest.onCompleted.addListener(function(details){
       if(details.tabId === -1 && details.frameId === -1){
       // if(details.parentFrameId === -1){
         let filetype = new_filetype_from_headers(details.responseHeaders);
-        console.log(filetype);
         if (!(filetype.includes('image'))){
           delete optimisedImages[details.url]
         }else{
@@ -218,12 +217,8 @@ chrome.webRequest.onCompleted.addListener(function(details){
                     .then(()=>{
                       //delete image
                       delete optimisedImages[details.url]
-                      // console.log(optimisedImages);
-                      console.log(Object.keys(optimisedImages).length);
-                      console.log(Object.keys(optimisedImages));
                       //check if we have processed all images, if we have notify state.js to show model data
                       if(Object.keys(optimisedImages).length === 0){
-                        console.log("final image notification")
                         browser.tabs.query({ active: true, currentWindow: true })
                         .then(
                           (tabs) => {
@@ -239,12 +234,10 @@ chrome.webRequest.onCompleted.addListener(function(details){
         }
       }else{
         // filter out non-image requests that slip through (bliz)
-        console.log(details);
         let filetype = new_filetype_from_headers(details.responseHeaders);
         if (!(filetype.includes('image'))){
           delete optimisedImages[details.url]
           if(Object.keys(optimisedImages).length === 0){
-            console.log("final image notification")
             browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {

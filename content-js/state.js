@@ -704,7 +704,7 @@ browser.runtime.onMessage.addListener(
                     // sendModelSummaries()
                 }else{
                     // sendModelSummaries()
-                    window.setTimeout(sendModelSummaries, 3000);
+                    window.setTimeout(sendModelSummaries, 4000);
                 }
         }
 
