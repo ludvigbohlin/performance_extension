@@ -22,7 +22,7 @@ let vue_data = {
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (sender.tab && sender.tab.active) {
-
+        console.log(request);
         setTimeout(function(){
         $('[data-toggle="popover"]').popover({
             html: true,
@@ -63,6 +63,8 @@ function summarizeImagesModel(images_summary_input) {
     // if original, optimised image count is not equal
     if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length ){
         console.log("error");
+        // console.log("unoptimised: ",  Object.keys(images_summary_input.unoptimized).length);
+        // console.log("optimised: ",  Object.keys(images_summary_input.optimized).length);
         vue_data['cors_error'] = true;
         // get number of serviceworker images that are not in original images but are in optimised
         let cors_error_number = 0;
