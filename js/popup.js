@@ -19,9 +19,11 @@ let vue_data = {
     
 };
 
+let startup = true;
+
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (sender.tab && sender.tab.active) {
+    if (sender.tab && sender.tab.active && request.hasOwnProperty('active')) {
         setTimeout(function(){
         $('[data-toggle="popover"]').popover({
             html: true,

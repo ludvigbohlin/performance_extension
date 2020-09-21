@@ -2,11 +2,12 @@
 // constant to define how much loss compensation to give chunked transfer encoded images
 const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
 
-
 // boolean to check whether some requests are chunked and thus require more time
 let isChunked = false;
 // boolean to check if we have manipulated DOM by changing view and thus mutating all selectors
 let canSendModels = true;
+// bolean to check if we've sent initial models yet
+let hasSentModel = false
 
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
@@ -102,7 +103,7 @@ function displaySelected(){
 
 // callback function for returning total chunk size of chunked image transfer
 function onChunkedResponseComplete([result, response]) {
-    return result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT);
+    return Math.round(result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT));
   }
 
 // error handler for chunked image transfer
@@ -112,7 +113,6 @@ function onChunkedResponseError(err) {
 
 // function that processes chunked image responses
 function processChunkedResponse(response) {
-    var text = '';
     var count = 0;
     var chunkSize = 0; 
     var reader = response.body.getReader()
@@ -156,7 +156,6 @@ function getServiceWorkerUrl(url){
 
 // refreshes selectedview 
 async function refreshSelectedView() {
-    let domains = await getServiceWorkerDomains();
     if (currentView === "selected") {
         // check if site is serviceWorker supported and if so, get serviceWorker domains that are used on the site
         serviceWorker =  CheckWorkerProcess();
@@ -165,23 +164,12 @@ async function refreshSelectedView() {
         }else{
             displaySelected();
         }
-        // automated refresh & sending of data to popup.js
-        // window.setTimeout(refreshSelectedView,   16000);
-        // window.setTimeout(sendModelSummaries, 4000);
-        // window.setTimeout(sendModelSummaries, 8000);
     }
 }
 
 // changes the view to selected
 async function changeToSelected() {
-    if (currentView !== "selected") {
-        // automated refresh & sending of data to popup.js
-        // window.setTimeout(sendModelSummaries, 4000);
-        // window.setTimeout(sendModelSummaries, 8000);
-        // window.setTimeout(refreshSelectedView, 16000);
-    }
     currentView = "selected";
-
     // check if site is serviceWorker supported and if so, get serviceWorker domains that are used on the site
     serviceWorker =  CheckWorkerProcess();
     if (serviceWorker){
@@ -243,48 +231,50 @@ function removeCustomStyles(im_element) {
 
 // function that changes the view to optimised images only 
 function changeToOptimized() {
-    canSendModels = false;
-    currentView = 'optimized';
-    let images = document.querySelectorAll('*,img.lazyloaded');
+    if(hasSentModel){
+        canSendModels = false; 
+        currentView = 'optimized';
+        let images = document.querySelectorAll('*,img.lazyloaded');
 
-    //iterate through images and change src to the optimised version
-    images.forEach((im) => {
-        // remove styles
-        removeCustomStyles(im);
-        if (canUseUrl(im.currentSrc)) {
-            let url = new URL(im.currentSrc);
-            let doc_hostname = document.location.hostname;
-            let optimised_image_url = getServiceWorkerUrl(url);
-            if (optimised_image_url !== undefined){
-                im.src = optimised_image_url;
-            }else{
-                if (url.hostname === doc_hostname) {;
-                    let dataset = im.dataset;
-                    if (dataset.hasOwnProperty("scbOriginalLocation")) {
-                        im.src = dataset.scbOriginalLocation;
+        //iterate through images and change src to the optimised version
+        images.forEach((im) => {
+            // remove styles
+            removeCustomStyles(im);
+            if (canUseUrl(im.currentSrc)) {
+                let url = new URL(im.currentSrc);
+                let doc_hostname = document.location.hostname;
+                let optimised_image_url = getServiceWorkerUrl(url);
+                if (optimised_image_url !== undefined){
+                    im.src = optimised_image_url;
+                }else{
+                    if (url.hostname === doc_hostname) {;
+                        let dataset = im.dataset;
+                        if (dataset.hasOwnProperty("scbOriginalLocation")) {
+                            im.src = dataset.scbOriginalLocation;
+                        }
                     }
                 }
             }
-        }
-        if (retrieving(im.style['backgroundImage'])) {
-            let returned_url = retrieving(im.style['backgroundImage']);
-            let url = new URL(returned_url);
-            let doc_hostname = document.location.hostname;
-            
-            // if serviceWorker image
-            let optimised_image_url = getServiceWorkerUrl(url);
-            if (optimised_image_url !== undefined){
-                im.src = optimised_image_url;
-            }else{
-                if (url.hostname === doc_hostname) {
-                    let dataset = im.dataset;
-                    if (dataset.hasOwnProperty("scbOriginalLocation")) {
-                        im.src = dataset.scbOriginalLocation;
+            if (retrieving(im.style['backgroundImage'])) {
+                let returned_url = retrieving(im.style['backgroundImage']);
+                let url = new URL(returned_url);
+                let doc_hostname = document.location.hostname;
+                
+                // if serviceWorker image
+                let optimised_image_url = getServiceWorkerUrl(url);
+                if (optimised_image_url !== undefined){
+                    im.src = optimised_image_url;
+                }else{
+                    if (url.hostname === doc_hostname) {
+                        let dataset = im.dataset;
+                        if (dataset.hasOwnProperty("scbOriginalLocation")) {
+                            im.src = dataset.scbOriginalLocation;
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 }
 
 // function that takes an element using a background image and retrieves the corresponding image url for it 
@@ -437,6 +427,7 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
 
 }
 
+// function that handles all image metadata to get ready to send to popup
 function handleImageHeadersCallback(data,url, imageSource, kind){
     let urlObj = new URL(url); 
     let im = imageDict[urlObj]
@@ -447,6 +438,7 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
     let transfer_size = data.size;
     let filetype = data.filetype;
 
+    // if image is the optimised version we want to classify it
     if (kind === 'optimised'){
         classifyImages(status, imageSource, kind);
     }
@@ -520,7 +512,10 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
     }
 }
 
-function classifyImages(status, url, kind){
+// function that classifies images
+function classifyImages(status, url){
+
+    // find all img elements with the specified src
     for(var img of document.querySelectorAll(`img[src='${url}']`)){
         let h = highlightAsWebp.bind(null, img);
         let g = highlightAsProcessing.bind(null, img);
@@ -538,7 +533,30 @@ function classifyImages(status, url, kind){
         } else {
             img.classList.add("scbca-gray");
         }  
+        
+    }
 
+    // find all elements with a css background image of the specified src
+    for(var img of document.querySelectorAll((`div[data-bgset]`))){
+        let bgSet = img.getAttribute('data-bgset')
+        if(bgSet.includes(url) || bgSet === url){
+            let h = highlightAsWebp.bind(null, img);
+            let g = highlightAsProcessing.bind(null, img);
+            let i = highlightAsNonViable.bind(null, img);
+            removeCustomStyles(img);
+            if (status === "ready") {
+                img.classList.remove("scbca-gray");
+                h();
+            } else if (status === "non-viable") {
+                img.classList.remove("scbca-gray");
+                i();
+            } else if (status === "in-processing") {
+                img.classList.remove("scbca-gray");
+                g();
+            } else {
+                img.classList.add("scbca-gray");
+            }  
+        }
     }
 }
 
@@ -620,32 +638,34 @@ function originalURLOfImage(im) {
 
 // change images to unoptimized versions
 function changeToUnoptimized() {
-    canSendModels = false;
-    currentView = "unoptimized";
-    let images = document.querySelectorAll("*,img.lazyloaded");
-    images.forEach((im) => {
-        // remove styles
-        removeCustomStyles(im);
-        const from_url = im.currentSrc;
-        if (canUseUrl(from_url)) {
-            let url = new URL(im.currentSrc);
-            let doc_hostname = document.location.hostname;
-            // if serviceWorker image
-            let optimised_image_url = getServiceWorkerUrl(url);
-            if (optimised_image_url !== undefined){
-                //shimmercat.cloud -> original url 
-                im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
-            }else{
-                if (url.hostname === doc_hostname) {
-                    let original_url = originalURLOfImage(im);
-                    let use_url = toNoHAPsURL(original_url);
-                    im.src = use_url.toString();
+    if(hasSentModel){
+        canSendModels = false;
+        currentView = "unoptimized";
+        let images = document.querySelectorAll("*,img.lazyloaded");
+        images.forEach((im) => {
+            // remove styles
+            removeCustomStyles(im);
+            const from_url = im.currentSrc;
+            if (canUseUrl(from_url)) {
+                let url = new URL(im.currentSrc);
+                let doc_hostname = document.location.hostname;
+                // if serviceWorker image
+                let optimised_image_url = getServiceWorkerUrl(url);
+                if (optimised_image_url !== undefined){
+                    //shimmercat.cloud -> original url 
+                    im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
+                }else{
+                    if (url.hostname === doc_hostname) {
+                        let original_url = originalURLOfImage(im);
+                        let use_url = toNoHAPsURL(original_url);
+                        im.src = use_url.toString();
+                    }
                 }
+                ;
             }
-            ;
-        }
 
-    });
+        });
+    }
 }
 
 // function for going from a serviceWorker url to an original via looking up it's corresponding domain in serviceWorker config
@@ -713,10 +733,12 @@ browser.runtime.onMessage.addListener(
             if(canSendModels){
                 if(!isChunked){
                     window.setTimeout(sendModelSummaries, 2000);
+                    hasSentModel = true;
                     // sendModelSummaries()
                 }else{
                     // sendModelSummaries()
                     window.setTimeout(sendModelSummaries, 4000);
+                    hasSentModel = true;
                 }
         }
 
