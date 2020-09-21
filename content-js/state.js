@@ -446,21 +446,11 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
     let status = data.status;
     let transfer_size = data.size;
     let filetype = data.filetype;
-    if (im !== undefined){
-        removeCustomStyles(im);
-        if (status === "ready") {
-            im.classList.remove("scbca-gray");
-            h();
-        } else if (status === "non-viable") {
-            im.classList.remove("scbca-gray");
-            i();
-        } else if (status === "in-processing") {
-            im.classList.remove("scbca-gray");
-            g();
-        } else {
-            im.classList.add("scbca-gray");
-        }  
-    }  
+
+    if (kind === 'optimised'){
+        classifyImages(status, imageSource, kind);
+    }
+    
     if (transfer_size !== null) {
         if(filetype.includes("image")){
             // add image to optimised images object ready for compression computation in popup.js
@@ -527,6 +517,28 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
             console.error(error);
             return;
         })
+    }
+}
+
+function classifyImages(status, url, kind){
+    for(var img of document.querySelectorAll(`img[src='${url}']`)){
+        let h = highlightAsWebp.bind(null, img);
+        let g = highlightAsProcessing.bind(null, img);
+        let i = highlightAsNonViable.bind(null, img);
+        removeCustomStyles(img);
+        if (status === "ready") {
+            img.classList.remove("scbca-gray");
+            h();
+        } else if (status === "non-viable") {
+            img.classList.remove("scbca-gray");
+            i();
+        } else if (status === "in-processing") {
+            img.classList.remove("scbca-gray");
+            g();
+        } else {
+            img.classList.add("scbca-gray");
+        }  
+
     }
 }
 
