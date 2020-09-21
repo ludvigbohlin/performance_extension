@@ -1,11 +1,12 @@
 body {
     background-color: white;
     width: 350px;
-    min-height: 600px !important;
+    min-height: 500px !important;
     font-family: sans-serif;
     margin: 0;
     color: black;
     font-size: 14px;
+    text-align: center;
 }
 
 #app-root{
@@ -19,7 +20,7 @@ body {
     width: 200px;
     height: 200px;
     margin-top: 17%;
-    margin-left: 21%;
+    /* margin-left: 21%; */
 }
 .ErrorMessage {
     padding: 14px;
@@ -125,6 +126,7 @@ h1 {
 .info-grid {
     display: -ms-grid;
     display: grid;
+    margin-top: 100px;
 }
 
 .info-grid div {
@@ -150,7 +152,7 @@ h1 {
     -ms-grid-row: auto;
     grid-row-start: auto;
     text-align: right;
-    font-size: 16px;
+    font-size: 13px;
 }
 
 .text-center {
@@ -184,7 +186,6 @@ h1 {
 
 .p-position {
     margin: 0px;
-    position: absolute;
     left: 80px;
 }
 
@@ -228,14 +229,17 @@ ul li::before {
 }
 
 .label-align {
-    position: relative;
+    margin-right: 63px;
+    margin-left: 63px;
+    /* position: relative; */
     top: 105%;
     border: 5px solid black;
     box-shadow: inset 1px 1px 5px 0px black;
-    border-radius: 10px;
-    left: 25px;
-    width: 75%;
-    padding: 15px;
+    /* border-radius: 10px; */
+    /* left: 25px; */
+    /* width: 75%; */
+    /* padding: 15px; */
+    margin-top: 30px;
     font-size: 13px;
 }
 
@@ -244,46 +248,46 @@ ul li::before {
     top: 2px;
     left: 5px;
     display: inline-block;
-    width: 120px;
+    width: 100px;
 }
 
 .div-2 {
     position: relative;
-    right: 50px;
+    right: 5px;
     display: inline-block;
-    width: 125px;
+    width: 100px;
 }
 
 .div-3 {
     position: relative;
     left: 4px;
     display: inline-block;
-    width: 120px;
+    width: 100px;
 }
 
 .div-4 {
     position: relative;
-    right: 50px;
+    right: 5px;
     display: inline-block;
-    width: 125px;
+    width: 100px;
 }
 
 .div-5 {
     position: relative;
     left: 4px;
     display: inline-block;
-    width: 120px;
+    width: 100px;
 }
 
 .div-6 {
     position: relative;
-    right: 50px;
+    right: 5px;
     display: inline-block;
-    width: 125px;
+    width: 100px;
 }
 .ImagesCount{
     text-align: center;
-    margin-top: 40%;
+    margin-top: 5%;
     left: 60px
 }
 
@@ -304,7 +308,7 @@ table{
     margin-left: auto;
     margin-right: auto;
     border-collapse: collapse;
-
+    font-size: 12px;
 }
 
 table, th, td {
