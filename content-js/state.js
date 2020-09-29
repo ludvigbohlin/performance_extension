@@ -222,7 +222,9 @@ function removeCustomStyles(im_element) {
         "scbca-webp",
         "scbca-processing",
         "scbca-non-viable",
-        "scbca-serviceworker"
+        "scbca-serviceworker",
+        "scbca-optimised", 
+        "scbca-original",
     ];
     for (let token of tokens) {
         im_element.classList.remove(token);
@@ -241,21 +243,25 @@ function changeToOptimized() {
             // remove styles
             removeCustomStyles(im);
             if (canUseUrl(im.currentSrc)) {
+                // console.log(im);
                 let url = new URL(im.currentSrc);
                 let doc_hostname = document.location.hostname;
                 let optimised_image_url = getServiceWorkerUrl(url);
                 if (optimised_image_url !== undefined){
                     im.src = optimised_image_url;
+                    im.classList.add('scbca-optimised')
                 }else{
                     if (url.hostname === doc_hostname) {;
                         let dataset = im.dataset;
                         if (dataset.hasOwnProperty("scbOriginalLocation")) {
                             im.src = dataset.scbOriginalLocation;
+                            im.classList.add('scbca-optimised')
                         }
                     }
                 }
             }
             if (retrieving(im.style['backgroundImage'])) {
+                // console.log(im);
                 let returned_url = retrieving(im.style['backgroundImage']);
                 let url = new URL(returned_url);
                 let doc_hostname = document.location.hostname;
@@ -263,17 +269,30 @@ function changeToOptimized() {
                 // if serviceWorker image
                 let optimised_image_url = getServiceWorkerUrl(url);
                 if (optimised_image_url !== undefined){
-                    im.src = optimised_image_url;
+                    // im.src = optimised_image_url;
+                    im.style.backgroundImage = `url(${optimised_image_url})`
+                    im.classList.add('scbca-optimised')
                 }else{
                     if (url.hostname === doc_hostname) {
                         let dataset = im.dataset;
                         if (dataset.hasOwnProperty("scbOriginalLocation")) {
                             im.src = dataset.scbOriginalLocation;
+                            im.classList.add('scbca-optimised')
                         }
                     }
                 }
             }
-        });
+            
+        }); 
+        // find all elements with a css background image of the specified src
+        for(var img of document.querySelectorAll((`div[data-bgset]`))){
+            let bgSet = img.getAttribute('data-bgset')
+            for (var file of Object.keys(unoptimizedSizeModel)){
+                if(bgSet.includes(file) || bgSet === file){
+                    img.classList.add('scbca-optimised');
+                }
+            }
+        }
     }
 }
 
@@ -411,7 +430,7 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
         kind: "optimised",
         isServiceWorker: isServiceWorkerImage
     }).then(
-        () => { console.log("message sent")}, 
+        () =>{}, 
         () => { },
     );
 
@@ -445,6 +464,8 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
     
     if (transfer_size !== null) {
         if(filetype.includes("image")){
+            let split_filename_arr = filetype.split('/');
+            filetype = split_filename_arr[1];
             // add image to optimised images object ready for compression computation in popup.js
             if (kind == 'original'){
                 unoptimizedSizeModel[url] = {
@@ -592,7 +613,7 @@ function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
         image: im,
         kind: "original"
     }).then(
-        () => { console.log("message sent")},
+        () => {},
         () => { },
     );
 
@@ -652,19 +673,29 @@ function changeToUnoptimized() {
                 // if serviceWorker image
                 let optimised_image_url = getServiceWorkerUrl(url);
                 if (optimised_image_url !== undefined){
-                    //shimmercat.cloud -> original url 
+                    //shimmercat.cloud -> original url  
                     im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
+                    im.classList.add('scbca-original')
                 }else{
                     if (url.hostname === doc_hostname) {
                         let original_url = originalURLOfImage(im);
                         let use_url = toNoHAPsURL(original_url);
                         im.src = use_url.toString();
+                        im.classList.add('scbca-original')
                     }
                 }
                 ;
             }
-
         });
+        // find all elements with a css background image of the specified src
+        for(var img of document.querySelectorAll((`div[data-bgset]`))){
+            let bgSet = img.getAttribute('data-bgset')
+            for (var file of Object.keys(unoptimizedSizeModel)){
+                if(bgSet.includes(file) || bgSet === file){
+                    img.classList.add('scbca-original');
+                }
+            }
+        }
     }
 }
 
@@ -732,6 +763,8 @@ browser.runtime.onMessage.addListener(
             // all images have been processed, now set timeout
             if(canSendModels){
                 if(!isChunked){
+                    // console.log(optimizedSizeModel);
+                    // console.log(unoptimizedSizeModel);
                     window.setTimeout(sendModelSummaries, 2000);
                     hasSentModel = true;
                     // sendModelSummaries()

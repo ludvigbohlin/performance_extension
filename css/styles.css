@@ -2,7 +2,7 @@ body {
     background-color: white;
     width: 350px;
     min-height: 500px !important;
-    font-family: sans-serif;
+    font-family: 'Open Sans',Helvetica,Arial,sans-serif;
     margin: 0;
     color: black;
     font-size: 14px;
@@ -59,8 +59,10 @@ body {
     padding: 16px;
 }
 
-.radiobutton-area {
+#radiobutton-area {
     padding: 0px 25px;
+    text-align: left;
+    display: none;
 }
 
 h1 {
@@ -84,7 +86,7 @@ h1 {
 
 .shim-radio {
     margin-top: 16px;
-    margin-bottom: 16px;
+    /* margin-bottom: 16px; */
 }
 
 .counters {
@@ -126,7 +128,7 @@ h1 {
 .info-grid {
     display: -ms-grid;
     display: grid;
-    margin-top: 100px;
+    /* margin-top: 100px; */
 }
 
 .info-grid div {
@@ -144,7 +146,6 @@ h1 {
 }
 
 .info-grid .amount {
-    font-family: "Share Tech Mono", monospace;
     -ms-grid-column: 2;
     grid-column-start: 2;
     -ms-grid-column-span: 1;
@@ -186,12 +187,11 @@ h1 {
 
 .p-position {
     margin: 0px;
-    left: 80px;
+    margin-left: 35px;
 }
 
 .r-position {
-    position: absolute;
-    left: 55px;
+    margin-left: 35px;
     cursor: pointer;
 }
 
@@ -308,11 +308,11 @@ table{
     margin-left: auto;
     margin-right: auto;
     border-collapse: collapse;
-    font-size: 12px;
+    font-size: 14px;
 }
 
-table, th, td {
-    border: 2px solid black;
+th {
+    border-bottom: 1px solid black;
   }
 
 .tooltip-btn{
@@ -336,10 +336,23 @@ table, th, td {
     margin-right: 20%;
     margin-bottom: 40%;
 }
+
+#cors-tooltip-div{
+    display: none;
+}
+
 .label-align{
     margin-top: 5%;
 }
 
 .exportcsvdiv{
     margin-top: 5%;
+}
+
+#stats-container{
+    display: none;
+}
+
+.popover{
+    pointer-events: none;
 }

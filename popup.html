@@ -51,7 +51,8 @@
                 This Website is not served by ShimmerCat.
             </label>
         </div>
-        <div class="radiobutton-area" v-if="total_size_optimized !== '' &&Active &&SplashScreen==false">
+        <div id="radiobutton-area">
+            <!-- <div id="radiobutton-area" v-if="total_size_optimized !== '' &&Active &&SplashScreen==false"></div> -->
             <p class="p-position">Show</p>
             <div class="r-position t-1">
                 <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized" v-model="shim">
@@ -125,14 +126,14 @@
                 <div class="filetypes-count-div">
                     <table>
                         <tr>
-                            <th>Filetype</th>
+                            <!-- <th>Filetype</th> -->
                             <th>Origin</th>
-                            <th>Optimised</th>
+                            <th>ShimmerCat</th>
                         </tr>
                             <tr v-for="(value, name, index) in filetypes">
-                                <td >{{value}}</td>
-                                <td >{{getOriginFiletype(value)}}</td>
-                                <td >{{getOptimisedFiletype(value)}}</td>
+                                <!-- <td >{{value}}</td> -->
+                                <td >{{getOriginFiletype(value)}} {{value}} </td>
+                                <td >{{getOptimisedFiletype(value)}} {{value}}</td>
                             </tr>
                     </table>
                     <div v-if="cors_error">
@@ -167,7 +168,7 @@
             <div>
 
 
-                <a href="#" v-on:click="SplashScreenChange" class="btn">Find optimized images</a>
+                <a id=submit-btn href="#" v-on:click="SplashScreenChange" class="btn">Find optimized images</a>
             </div>
         </div>
     </div>
