@@ -110,12 +110,7 @@ function summarizeImagesModel(images_summary_input) {
         optimised: {}
     };
     // get origin file totals
-    // console.log(Object.values(images_summary_input.optimized));
-    // console.log(Object.values(images_summary_input.optimized).includes({"filetype": "webp"}));
     for (const file of Object.keys(images_summary_input.unoptimized)){
-        // if(!Object.values(images_summary_input.optimized).includes(images_summary_input.unoptimized[key].pathname)){
-        //     console.log(file);
-        // }
         var optimizedPathnameKey = Object.keys(images_summary_input.optimized).find(searchKey => images_summary_input.optimized[searchKey]["pathname"] === images_summary_input.unoptimized[file]["pathname"]);
         if (optimizedPathnameKey === undefined){
             console.log(key);
@@ -142,24 +137,17 @@ function summarizeImagesModel(images_summary_input) {
         if(!(filetypes.includes(filetype.toString()))){
             filetypes.push(filetype);
         }
-        let num = filetype_data["origin"][filetype].toString() 
-        // filetype_data["origin"][filetype] = num + " (" + Math.round((filetype_data["origin"][filetype] / total_files) * 100) + "%)"; 
-        // filetype_data["origin"][filetype] = num; 
-
     }
 
     for (const filetype of Object.keys(filetype_data["optimised"])){
         if(!(filetypes.includes(filetype.toString()))){
             filetypes.push(filetype);
         }
-        let num = filetype_data["optimised"][filetype].toString() 
-        // filetype_data["optimised"][filetype] = num + " (" + Math.round((filetype_data["optimised"][filetype] / total_files) * 100) + "%)"; 
     }
 
     vue_data["filetype_data"] = filetype_data;
     vue_data["filetypes"] = filetypes
 
-    console.log(images_summary_input);
 }
 
 // function that formats numbers
@@ -267,25 +255,27 @@ window.vue_body_app = new Vue({
 });
 
 document.getElementById('submit-btn').addEventListener('click', function(){
-        // document.getElementById("optimized").checked = false;
-        // document.getElementById("unoptimized").checked = false;
-        // document.getElementById("select").checked = true; 
-        vue_data["shim"] = "select";
+    // force select view
+    vue_data["shim"] = "select";
 });
 
-// window.addEventListener('DOMContentLoaded', function(){
-//     console.log("executing eventlistener");
-//     // force selection view
-//     document.getElementById("optimized").checked = false;
-//     document.getElementById("unoptimized").checked = false;
-//     document.getElementById("select").checked = true;
-// })
-// window.addEventListener('focus', function(){
-//     // force selection view
-//     document.getElementById("optimized").checked = false;
-//     document.getElementById("unoptimized").checked = false;
-//     document.getElementById("select").checked = true;
-// })
+window.addEventListener('load', function(){
+    // enable sending of models
+    browser.tabs.query({
+        'active': true,
+        'currentWindow': true
+    })
+        .then(
+            (tabs) => {
+                return browser.tabs.sendMessage(tabs[0].id, { "loaded": true });
+            })
+        .then((response) => {
+            console.log(response);
+        })
+        .catch((error) =>{
+            console.log(error);
+        });
+})
 
 restoreData(vue_data);
 myVersion();
