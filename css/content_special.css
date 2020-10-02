@@ -107,3 +107,13 @@
   filter: sepia(100%) hue-rotate(190deg) saturate(500%);
   outline: solid #0066CC 4px;
 }
+
+.scbca-optimised:not(.scbca-good):not(.scbca-bad){
+  /* filter: sepia(100%) hue-rotate(190deg) saturate(500%); */
+  border: solid #60992d 4px !important;
+}
+
+.scbca-original:not(.scbca-good):not(.scbca-bad){
+  /* filter: sepia(100%) hue-rotate(190deg) saturate(500%); */
+  border: solid #127caa 4px !important;
+}

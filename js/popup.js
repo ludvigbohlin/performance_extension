@@ -38,6 +38,10 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         vue_data["ServiceWorker"] = request.serviceWorker;
         summarizeImagesModel(request);
         vue_data["Spinner"] = false;
+        
+        // make radiobuttons visible 
+        document.getElementById('radiobutton-area').style.display = 'block';
+
     }
 });
 
@@ -64,6 +68,7 @@ function summarizeImagesModel(images_summary_input) {
     // if original, optimised image count is not equal
     if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length ){
         vue_data['cors_error'] = true;
+        
         // get number of serviceworker images that are not in original images but are in optimised
         let cors_error_number = 0;
         for (var key in images_summary_input.optimized){
@@ -73,6 +78,8 @@ function summarizeImagesModel(images_summary_input) {
             }
         }
         vue_data["cors_error_number"] = cors_error_number;
+        //make tooltip visible
+        // document.getElementById('cors-toolip-div').style.display = 'block';
     }
 
     // calculate total size of all original images found
@@ -104,6 +111,10 @@ function summarizeImagesModel(images_summary_input) {
     };
     // get origin file totals
     for (const file of Object.keys(images_summary_input.unoptimized)){
+        var optimizedPathnameKey = Object.keys(images_summary_input.optimized).find(searchKey => images_summary_input.optimized[searchKey]["pathname"] === images_summary_input.unoptimized[file]["pathname"]);
+        if (optimizedPathnameKey === undefined){
+            console.log(key);
+        }
         let filetype = images_summary_input.unoptimized[file]["filetype"];
         if(!(filetype in filetype_data["origin"])){
             filetype_data["origin"][filetype] = 1;
@@ -126,20 +137,17 @@ function summarizeImagesModel(images_summary_input) {
         if(!(filetypes.includes(filetype.toString()))){
             filetypes.push(filetype);
         }
-        let num = filetype_data["origin"][filetype].toString() 
-        filetype_data["origin"][filetype] = num + " (" + Math.round((filetype_data["origin"][filetype] / total_files) * 100) + "%)"; 
     }
 
     for (const filetype of Object.keys(filetype_data["optimised"])){
         if(!(filetypes.includes(filetype.toString()))){
             filetypes.push(filetype);
         }
-        let num = filetype_data["optimised"][filetype].toString() 
-        filetype_data["optimised"][filetype] = num + " (" + Math.round((filetype_data["optimised"][filetype] / total_files) * 100) + "%)"; 
     }
 
     vue_data["filetype_data"] = filetype_data;
     vue_data["filetypes"] = filetypes
+
 }
 
 // function that formats numbers
@@ -245,6 +253,29 @@ window.vue_body_app = new Vue({
         }
     }
 });
+
+document.getElementById('submit-btn').addEventListener('click', function(){
+    // force select view
+    vue_data["shim"] = "select";
+});
+
+window.addEventListener('load', function(){
+    // enable sending of models
+    browser.tabs.query({
+        'active': true,
+        'currentWindow': true
+    })
+        .then(
+            (tabs) => {
+                return browser.tabs.sendMessage(tabs[0].id, { "loaded": true });
+            })
+        .then((response) => {
+            console.log(response);
+        })
+        .catch((error) =>{
+            console.log(error);
+        });
+})
 
 restoreData(vue_data);
 myVersion();

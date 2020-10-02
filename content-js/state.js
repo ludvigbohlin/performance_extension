@@ -48,7 +48,19 @@ function* iterateOnImages() {
                     populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
                     yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
                 }else {
-                    continue;
+                    try {
+                        isServiceWorkerImage = true;
+                        originalUrl = getOriginalFromServiceWorkerUrl(im.currentSrc);
+                        optimisedUrl = im.currentSrc;
+                        if(originalUrl !== undefined && optimisedUrl !== undefined){
+                            im.src = originalUrl
+                            imageDict[optimisedUrl] = im;
+                            populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
+                            yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];    
+                        }
+                    } catch (error) {
+                        console.log(error)
+                    }
                 }
             }
         }
@@ -169,7 +181,18 @@ async function refreshSelectedView() {
 
 // changes the view to selected
 async function changeToSelected() {
+
     currentView = "selected";
+
+    // if(optimizedSizeModel !== null){
+    //     // remove styles
+    //     for (var url of Object.keys(optimizedSizeModel)){
+    //         for(var img of document.querySelectorAll(`img[src='${url}']`)){
+    //             removeCustomStyles(img)
+    //         }
+    //     }
+
+    // }
     // check if site is serviceWorker supported and if so, get serviceWorker domains that are used on the site
     serviceWorker =  CheckWorkerProcess();
     if (serviceWorker){
@@ -189,7 +212,7 @@ function sendModelSummaries() {
         'serviceWorker': serviceWorker,
     }).then(
         () => { },
-        () => { },
+        () => {},
     );
 }
 
@@ -222,7 +245,9 @@ function removeCustomStyles(im_element) {
         "scbca-webp",
         "scbca-processing",
         "scbca-non-viable",
-        "scbca-serviceworker"
+        "scbca-serviceworker",
+        "scbca-optimised", 
+        "scbca-original",
     ];
     for (let token of tokens) {
         im_element.classList.remove(token);
@@ -246,11 +271,13 @@ function changeToOptimized() {
                 let optimised_image_url = getServiceWorkerUrl(url);
                 if (optimised_image_url !== undefined){
                     im.src = optimised_image_url;
+                    im.classList.add('scbca-optimised')
                 }else{
                     if (url.hostname === doc_hostname) {;
                         let dataset = im.dataset;
                         if (dataset.hasOwnProperty("scbOriginalLocation")) {
                             im.src = dataset.scbOriginalLocation;
+                            im.classList.add('scbca-optimised')
                         }
                     }
                 }
@@ -263,17 +290,30 @@ function changeToOptimized() {
                 // if serviceWorker image
                 let optimised_image_url = getServiceWorkerUrl(url);
                 if (optimised_image_url !== undefined){
-                    im.src = optimised_image_url;
+                    // im.src = optimised_image_url;
+                    im.style.backgroundImage = `url(${optimised_image_url})`
+                    im.classList.add('scbca-optimised')
                 }else{
                     if (url.hostname === doc_hostname) {
                         let dataset = im.dataset;
                         if (dataset.hasOwnProperty("scbOriginalLocation")) {
                             im.src = dataset.scbOriginalLocation;
+                            im.classList.add('scbca-optimised')
                         }
                     }
                 }
             }
-        });
+            
+        }); 
+        // find all elements with a css background image of the specified src
+        for(var img of document.querySelectorAll((`div[data-bgset]`))){
+            let bgSet = img.getAttribute('data-bgset')
+            for (var file of Object.keys(unoptimizedSizeModel)){
+                if(bgSet.includes(file) || bgSet === file){
+                    img.classList.add('scbca-optimised');
+                }
+            }
+        }
     }
 }
 
@@ -411,7 +451,7 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
         kind: "optimised",
         isServiceWorker: isServiceWorkerImage
     }).then(
-        () => { console.log("message sent")}, 
+        () =>{}, 
         () => { },
     );
 
@@ -445,6 +485,8 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
     
     if (transfer_size !== null) {
         if(filetype.includes("image")){
+            let split_filename_arr = filetype.split('/');
+            filetype = split_filename_arr[1];
             // add image to optimised images object ready for compression computation in popup.js
             if (kind == 'original'){
                 unoptimizedSizeModel[url] = {
@@ -483,6 +525,8 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                 transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
 
                 if(filetype.includes("image")){
+                    let split_filename_arr = filetype.split('/');
+                    filetype = split_filename_arr[1];
                     if (kind == 'original'){
                         unoptimizedSizeModel[url] = {
                             'status': status,
@@ -592,7 +636,7 @@ function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
         image: im,
         kind: "original"
     }).then(
-        () => { console.log("message sent")},
+        () => {},
         () => { },
     );
 
@@ -652,19 +696,29 @@ function changeToUnoptimized() {
                 // if serviceWorker image
                 let optimised_image_url = getServiceWorkerUrl(url);
                 if (optimised_image_url !== undefined){
-                    //shimmercat.cloud -> original url 
+                    //shimmercat.cloud -> original url  
                     im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
+                    im.classList.add('scbca-original')
                 }else{
                     if (url.hostname === doc_hostname) {
                         let original_url = originalURLOfImage(im);
                         let use_url = toNoHAPsURL(original_url);
                         im.src = use_url.toString();
+                        im.classList.add('scbca-original')
                     }
                 }
                 ;
             }
-
         });
+        // find all elements with a css background image of the specified src
+        for(var img of document.querySelectorAll((`div[data-bgset]`))){
+            let bgSet = img.getAttribute('data-bgset')
+            for (var file of Object.keys(unoptimizedSizeModel)){
+                if(bgSet.includes(file) || bgSet === file){
+                    img.classList.add('scbca-original');
+                }
+            }
+        }
     }
 }
 
@@ -740,10 +794,16 @@ browser.runtime.onMessage.addListener(
                     window.setTimeout(sendModelSummaries, 4000);
                     hasSentModel = true;
                 }
-        }
+            }   
 
+        
         }
-    }
+        if(request.hasOwnProperty("loaded")){
+            // allow sending of models
+            hasSentModel = false;
+            canSendModels = true;
+        }
+}
 );
 
 // function for checking whether a site is using the serviceWorker or not
