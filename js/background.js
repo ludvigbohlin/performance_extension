@@ -31,6 +31,46 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 
   }
+  if(request.command === 'imageFetch'){
+    let headers = new Headers({
+      "cache-control": "no-cache",
+      "accept": "image/webp,image/apng,image/*",
+      "accept-encoding": "gzip, deflate, br",});
+    
+      let mode = "cors";
+
+    let fetch_request = new Request(
+      request.url,
+      {
+          "headers": headers,
+          "method": "GET",
+          "mode": mode,
+          "cache": "no-store"
+      });
+  
+  
+  let prom = fetch(fetch_request);
+
+  prom.then(
+    (response) => {
+        if (response.status === 200) {
+          // console.log("success!")
+          if(request.type === 'original'){
+            originalImages[request.url] = request.image;  
+          }else{
+            optimisedImages[request.url]= {
+              "image": request.image,
+              "isServiceWorkerImage": false
+            } 
+          }
+        }
+        else {
+            console.log("error");
+        }
+    }                                
+  );
+    
+  }
 });
 const ANALYZED_DOMAIN = 'https://tools.se';
 

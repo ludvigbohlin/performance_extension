@@ -202,14 +202,18 @@ window.vue_body_app = new Vue({
     data: vue_data,
     el: "#app-root",
     methods: {
-        changeShim: function (to_what) {
+        changeShim: function (to_what, isWhitelisted) {
             browser.tabs.query({
                 'active': true,
                 'currentWindow': true
             })
                 .then(
                     (tabs) => {
-                        return browser.tabs.sendMessage(tabs[0].id, { newShim: to_what });
+                        
+                        return browser.tabs.sendMessage(tabs[0].id, { 
+                            newShim: to_what,
+                            whitelist: isWhitelisted
+                        });
                     })
                 .then((response) => {
                     // console.log(response);
@@ -225,10 +229,10 @@ window.vue_body_app = new Vue({
         },
         // function to change state of splashscreen
         SplashScreenChange: function () {
-
+            var isWhitelisted = !document.getElementById('whitelist-checkbox').checked
             vue_data["SplashScreen"] = false;
             vue_data["Spinner"] = true;
-            this.changeShim("select");
+            this.changeShim("select", isWhitelisted);
 
         },
         getOriginFiletype: function(index){
@@ -255,6 +259,8 @@ window.vue_body_app = new Vue({
 });
 
 document.getElementById('submit-btn').addEventListener('click', function(){
+    // tell state.js the state of whitelist checkbox
+
     // force select view
     vue_data["shim"] = "select";
 });

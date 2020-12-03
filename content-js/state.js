@@ -18,8 +18,9 @@ let serviceWorkerDomains = {};
 let imageDict = {};
 
 // function that iterates through images in DOM & returns original & optimised image sources
-function* iterateOnImages() {
-    let images = document.querySelectorAll('*,img.lazyloaded');
+function* iterateOnWhitelistedImages() {
+    // let images = document.querySelectorAll('*,img.lazyloaded');
+    let images = document.querySelectorAll('img');
     let isServiceWorkerImage = false;
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
@@ -57,6 +58,11 @@ function* iterateOnImages() {
                             imageDict[optimisedUrl] = im;
                             populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
                             yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];    
+                        }else{
+                            // image different host from page and not serviceWorker
+
+                            // check if image is shimmercat-enabled
+
                         }
                     } catch (error) {
                         console.log(error)
@@ -99,18 +105,157 @@ function* iterateOnImages() {
     }
 }
 
+function* iterateOnAllImages() {
+    // let images = document.querySelectorAll('*,img.lazyloaded');
+    let images = document.querySelectorAll('img');
+    let isServiceWorkerImage = false;
+    for (let im of images) {
+        if (canUseUrl(im.currentSrc)) {
+            let originalUrl = new URL(im.currentSrc);
+            let noHapsUrl = originalUrl.origin + originalUrl.pathname + stripHAPsSearchParam(originalUrl.search); 
+            let optimisedUrl = '';
+            let doc_hostname = document.location.hostname;
+
+            optimisedUrl = originalURLOfImage(im);
+            imageDict[noHapsUrl] = im;
+
+            isServiceWorkerImage = false;
+            // remove HAPS compression
+            originalUrl = toNoHAPsURL(originalURLOfImage(im));  
+            // instead of using populateUnoptimizedSizeModel we need to make a background workaround
+            chrome.runtime.sendMessage({
+                command: "imageFetch", 
+                url: originalUrl,
+                type: "original",
+                image: im.src
+            })
+            yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
+
+            // if (originalUrl.hostname === doc_hostname) {
+            //     isServiceWorkerImage = false;
+            //     // remove HAPS compression
+            //     originalUrl = toNoHAPsURL(originalURLOfImage(im));  
+            //     populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
+            //     yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
+            // }else {
+            //     try {
+            //         isServiceWorkerImage = true;
+            //         originalUrl = getOriginalFromServiceWorkerUrl(im.currentSrc);
+            //         optimisedUrl = im.currentSrc;
+            //         if(originalUrl !== undefined && optimisedUrl !== undefined){
+            //             im.src = originalUrl
+            //             imageDict[optimisedUrl] = im;
+            //             populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
+            //             yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];    
+            //         }else{
+            //             // image different host from page and not serviceWorker
+
+            //             // check if image is shimmercat-enabled
+
+            //         }
+            //     } catch (error) {
+            //         console.log(error)
+            //     }
+            // }
+        }
+        if (retrieving(im.style['backgroundImage'])) {
+            let returned_url = retrieving(im.style['backgroundImage']);
+            let optimisedUrl = '';
+        
+            let originalUrl = new URL(returned_url);
+            imageDict[originalUrl] = im;
+            let doc_hostname = document.location.hostname;
+
+            optimisedUrl = originalURLOfImage(im);
+
+
+            isServiceWorkerImage = false;
+
+            // remove HAPS compression
+            originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
+            //     // optimisedUrl = originalUrl;
+            //     optimisedUrl = originalURLOfImage(im);
+            //     if (originalUrl.hostname === doc_hostname) {
+            //         // isServiceWorkerImage = 'origin'
+            //         isServiceWorkerImage = false;
+
+            //         // remove HAPS compression
+            //         originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
+
+            // instead of using populateUnoptimizedSizeModel we need to make a background workaround
+            chrome.runtime.sendMessage({
+                command: "imageFetch", 
+                url: originalUrl,
+                type: "original",
+                image: im.src
+            })
+
+            // populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
+            yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
+            
+            // // check if image is supported by the serviceWorker
+            // let optimised_image_url = getServiceWorkerUrl(originalUrl);
+            // if (optimised_image_url !== undefined){
+            //     // isServiceWorkerImage = 'serviceWorker';
+            //     isServiceWorkerImage = true;
+            //     optimisedUrl = optimised_image_url;
+            //     populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
+            //     yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
+            // // else image optimisation is processed via origin
+            // }else{
+            //     // optimisedUrl = originalUrl;
+            //     optimisedUrl = originalURLOfImage(im);
+            //     if (originalUrl.hostname === doc_hostname) {
+            //         // isServiceWorkerImage = 'origin'
+            //         isServiceWorkerImage = false;
+
+            //         // remove HAPS compression
+            //         originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
+            //         populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src); 
+            //         yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
+            //     // image compression not supported for the domain as it is not defined in serviceWorker and not the root url of the site
+            //     }else continue;
+            // }
+        }
+    }
+}
+
+
+
+
 // function that displays various styles based on the status of the image
-function displaySelected(){
+function displaySelected(isWhitelisted){
     imageDict = {};
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
-    for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnImages()) {
-    
-        im.currentSrc = originalUrl;
-        im.src = originalUrl;
 
-        urlPointsToStatus(optimisedUrl, isServiceWorkerImage, originalUrl);
-    } 
+    // only certain domains allowed
+    if (isWhitelisted){
+        for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnWhitelistedImages()) {
+            // console.log(im);
+            im.currentSrc = originalUrl;
+            im.src = originalUrl;
+    
+            urlPointsToStatus(optimisedUrl, isServiceWorkerImage, originalUrl);
+        } 
+    }else{
+        // all domains allowed
+        for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnAllImages()) {
+            // console.log(im);
+            im.currentSrc = originalUrl;
+            im.src = originalUrl;
+    
+            // urlPointsToStatus(optimisedUrl, isServiceWorkerImage, originalUrl);
+            // need to make a CORS request so we need to pass urls to background.js and perform the requests there. 
+            chrome.runtime.sendMessage({
+                command: "imageFetch", 
+                url: optimisedUrl,
+                type: "optimised",
+                image: originalUrl
+            })
+        }  
+
+    }
 }
 
 // callback function for returning total chunk size of chunked image transfer
@@ -180,25 +325,16 @@ async function refreshSelectedView() {
 }
 
 // changes the view to selected
-async function changeToSelected() {
+async function changeToSelected(isWhitelisted) {
 
     currentView = "selected";
 
-    // if(optimizedSizeModel !== null){
-    //     // remove styles
-    //     for (var url of Object.keys(optimizedSizeModel)){
-    //         for(var img of document.querySelectorAll(`img[src='${url}']`)){
-    //             removeCustomStyles(img)
-    //         }
-    //     }
-
-    // }
     // check if site is serviceWorker supported and if so, get serviceWorker domains that are used on the site
     serviceWorker =  CheckWorkerProcess();
     if (serviceWorker){
-        getServiceWorkerDomains();
+        getServiceWorkerDomains(isWhitelisted);
     }else{
-        displaySelected();
+        displaySelected(isWhitelisted)
     }
 }
 
@@ -253,67 +389,203 @@ function removeCustomStyles(im_element) {
         im_element.classList.remove(token);
     }
 }
-
-// function that changes the view to optimised images only 
-function changeToOptimized() {
-    if(hasSentModel){
-        canSendModels = false; 
-        currentView = 'optimized';
-        let images = document.querySelectorAll('*,img.lazyloaded');
-
-        //iterate through images and change src to the optimised version
-        images.forEach((im) => {
-            // remove styles
-            removeCustomStyles(im);
-            if (canUseUrl(im.currentSrc)) {
-                let url = new URL(im.currentSrc);
-                let doc_hostname = document.location.hostname;
-                let optimised_image_url = getServiceWorkerUrl(url);
-                if (optimised_image_url !== undefined){
-                    im.src = optimised_image_url;
-                    im.classList.add('scbca-optimised')
-                }else{
-                    if (url.hostname === doc_hostname) {;
-                        let dataset = im.dataset;
-                        if (dataset.hasOwnProperty("scbOriginalLocation")) {
-                            im.src = dataset.scbOriginalLocation;
-                            im.classList.add('scbca-optimised')
-                        }
-                    }
-                }
-            }
-            if (retrieving(im.style['backgroundImage'])) {
-                let returned_url = retrieving(im.style['backgroundImage']);
-                let url = new URL(returned_url);
-                let doc_hostname = document.location.hostname;
-                
-                // if serviceWorker image
-                let optimised_image_url = getServiceWorkerUrl(url);
-                if (optimised_image_url !== undefined){
-                    // im.src = optimised_image_url;
-                    im.style.backgroundImage = `url(${optimised_image_url})`
-                    im.classList.add('scbca-optimised')
-                }else{
-                    if (url.hostname === doc_hostname) {
-                        let dataset = im.dataset;
-                        if (dataset.hasOwnProperty("scbOriginalLocation")) {
-                            im.src = dataset.scbOriginalLocation;
-                            im.classList.add('scbca-optimised')
-                        }
-                    }
-                }
-            }
+function allAddCustomStyles(classname){
+    // let images = document.querySelectorAll('*,img.lazyloaded');
+    let images = document.querySelectorAll('img');
+    //iterate through images and change src to the optimised version
+    images.forEach((im) => {
+        // remove styles
+        removeCustomStyles(im);
+        if (canUseUrl(im.currentSrc)) {
+            let url = new URL(im.currentSrc);
+            let doc_hostname = document.location.hostname;
             
-        }); 
-        // find all elements with a css background image of the specified src
-        for(var img of document.querySelectorAll((`div[data-bgset]`))){
-            let bgSet = img.getAttribute('data-bgset')
-            for (var file of Object.keys(unoptimizedSizeModel)){
-                if(bgSet.includes(file) || bgSet === file){
-                    img.classList.add('scbca-optimised');
+            // optimised
+            if(classname === 'scbca-optimised'){
+                let dataset = im.dataset;
+                    if (dataset.hasOwnProperty("scbOriginalLocation")) {
+                        im.src = dataset.scbOriginalLocation;
+                    }
+                }else{
+                    // unoptimised
+                    let original_url = originalURLOfImage(im);
+                    let use_url = toNoHAPsURL(original_url);
+                    im.src = use_url.toString(); 
+                }
+                im.classList.add(classname) 
+
+            // let dataset = im.dataset
+            // if (dataset.hasOwnProperty("scbOriginalLocation")) {
+            //     console.log("tru");
+            //     im.src = dataset.scbOriginalLocation;
+            //     im.classList.add(classname)
+            // }
+            // im.classList.add('scbca-optimised')
+            // let optimised_image_url = getServiceWorkerUrl(url);
+            // if (optimised_image_url !== undefined){
+            //     im.src = optimised_image_url;
+            //     im.classList.add('scbca-optimised')
+            // }else{
+            //     if (url.hostname === doc_hostname) {;
+            //         let dataset = im.dataset;
+            //         if (dataset.hasOwnProperty("scbOriginalLocation")) {
+            //             im.src = dataset.scbOriginalLocation;
+            //             im.classList.add('scbca-optimised')
+            //         }
+            //     }
+            // }
+        }
+        if (retrieving(im.style['backgroundImage'])) {
+            let returned_url = retrieving(im.style['backgroundImage']);
+            let url = new URL(returned_url);
+            let doc_hostname = document.location.hostname;
+             // optimised
+             if(classname === 'scbca-optimised'){
+                let dataset = im.dataset;
+                    if (dataset.hasOwnProperty("scbOriginalLocation")) {
+                        im.src = dataset.scbOriginalLocation;
+                    }
+                }else{
+                    // unoptimised
+                    let original_url = originalURLOfImage(im);
+                    let use_url = toNoHAPsURL(original_url);
+                    im.src = use_url.toString(); 
+                }
+                im.classList.add(classname)
+            // if (dataset.hasOwnProperty("scbOriginalLocation")) {
+            //     im.src = dataset.scbOriginalLocation;
+            //     im.classList.add(classname)
+            // }
+            
+            // // if serviceWorker image
+            // let optimised_image_url = getServiceWorkerUrl(url);
+            // if (optimised_image_url !== undefined){
+            //     // im.src = optimised_image_url;
+            //     im.style.backgroundImage = `url(${optimised_image_url})`
+            //     im.classList.add('scbca-optimised')
+            // }else{
+            //     if (url.hostname === doc_hostname) {
+            //         let dataset = im.dataset;
+            //         if (dataset.hasOwnProperty("scbOriginalLocation")) {
+            //             im.src = dataset.scbOriginalLocation;
+            //             im.classList.add('scbca-optimised')
+            //         }
+            //     }
+            // }
+        }
+        
+    }); 
+    // find all elements with a css background image of the specified src
+    for(var img of document.querySelectorAll((`div[data-bgset]`))){
+        let bgSet = img.getAttribute('data-bgset')
+        for (var file of Object.keys(unoptimizedSizeModel)){
+            if(bgSet.includes(file) || bgSet === file){
+                img.classList.add(classname);
+            }
+        }
+    }
+}
+
+
+
+function whitelistedAddCustomStyles(classname){
+    let images = document.querySelectorAll('*,img.lazyloaded');
+
+    //iterate through images and change src to the optimised version
+    images.forEach((im) => {
+        // remove styles
+        removeCustomStyles(im);
+        if (canUseUrl(im.currentSrc)) {
+            let url = new URL(im.currentSrc);
+            let doc_hostname = document.location.hostname;
+            let optimised_image_url = getServiceWorkerUrl(url);
+            if (optimised_image_url !== undefined){
+                // optimised
+                if (classname === 'scbca-optimised'){
+                    im.src = optimised_image_url;
+                }else{
+                    // unoptimised
+                    im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
+                }
+                im.classList.add(classname)
+
+            }else{
+                if (url.hostname === doc_hostname) {;
+                    // optimised
+                    if(classname === 'scbca-optimised'){
+                    let dataset = im.dataset;
+                        if (dataset.hasOwnProperty("scbOriginalLocation")) {
+                            im.src = dataset.scbOriginalLocation;
+                        }
+                    }else{
+                        // unoptimised
+                        let original_url = originalURLOfImage(im);
+                        let use_url = toNoHAPsURL(original_url);
+                        im.src = use_url.toString(); 
+                    }
+                    im.classList.add(classname)
                 }
             }
         }
+        if (retrieving(im.style['backgroundImage'])) {
+            let returned_url = retrieving(im.style['backgroundImage']);
+            let url = new URL(returned_url);
+            let doc_hostname = document.location.hostname;
+            
+            // if serviceWorker image
+            let optimised_image_url = getServiceWorkerUrl(url);
+            if (optimised_image_url !== undefined){
+                // optimised
+                if (classname === 'scbca-optimised'){
+                    im.src = optimised_image_url;
+                }else{
+                    // unoptimised
+                    im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
+                }
+                im.classList.add(classname)
+            }else{
+                if (url.hostname === doc_hostname) {
+                    // optimised
+                    if(classname === 'scbca-optimised'){
+                        let dataset = im.dataset;
+                            if (dataset.hasOwnProperty("scbOriginalLocation")) {
+                                im.src = dataset.scbOriginalLocation;
+                            }
+                        }else{
+                            // unoptimised
+                            let original_url = originalURLOfImage(im);
+                            let use_url = toNoHAPsURL(original_url);
+                            im.src = use_url.toString(); 
+                        }
+                        im.classList.add(classname)
+                }
+            }
+        }
+        
+    }); 
+    // find all elements with a css background image of the specified src
+    for(var img of document.querySelectorAll((`div[data-bgset]`))){
+        let bgSet = img.getAttribute('data-bgset')
+        for (var file of Object.keys(unoptimizedSizeModel)){
+            if(bgSet.includes(file) || bgSet === file){
+                img.classList.add(classname);
+            }
+        }
+    }
+}
+
+// function that changes the view to optimised images only 
+function changeToOptimized(isWhitelisted) {
+    if(hasSentModel){
+        canSendModels = false; 
+        currentView = 'optimized';
+
+        if(isWhitelisted){
+            whitelistedAddCustomStyles('scbca-optimised')
+        }else{
+            allAddCustomStyles('scbca-optimised')
+        }
+        
     }
 }
 
@@ -681,44 +953,50 @@ function originalURLOfImage(im) {
 }
 
 // change images to unoptimized versions
-function changeToUnoptimized() {
+function changeToUnoptimized(isWhitelisted) {
     if(hasSentModel){
         canSendModels = false;
         currentView = "unoptimized";
-        let images = document.querySelectorAll("*,img.lazyloaded");
-        images.forEach((im) => {
-            // remove styles
-            removeCustomStyles(im);
-            const from_url = im.currentSrc;
-            if (canUseUrl(from_url)) {
-                let url = new URL(im.currentSrc);
-                let doc_hostname = document.location.hostname;
-                // if serviceWorker image
-                let optimised_image_url = getServiceWorkerUrl(url);
-                if (optimised_image_url !== undefined){
-                    //shimmercat.cloud -> original url  
-                    im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
-                    im.classList.add('scbca-original')
-                }else{
-                    if (url.hostname === doc_hostname) {
-                        let original_url = originalURLOfImage(im);
-                        let use_url = toNoHAPsURL(original_url);
-                        im.src = use_url.toString();
-                        im.classList.add('scbca-original')
-                    }
-                }
-                ;
-            }
-        });
-        // find all elements with a css background image of the specified src
-        for(var img of document.querySelectorAll((`div[data-bgset]`))){
-            let bgSet = img.getAttribute('data-bgset')
-            for (var file of Object.keys(unoptimizedSizeModel)){
-                if(bgSet.includes(file) || bgSet === file){
-                    img.classList.add('scbca-original');
-                }
-            }
+
+        if(isWhitelisted){
+            whitelistedAddCustomStyles('scbca-original')
+        }else{
+            allAddCustomStyles('scbca-original') 
         }
+        // let images = document.querySelectorAll("*,img.lazyloaded");
+        // images.forEach((im) => {
+        //     // remove styles
+        //     removeCustomStyles(im);
+        //     const from_url = im.currentSrc;
+        //     if (canUseUrl(from_url)) {
+        //         let url = new URL(im.currentSrc);
+        //         let doc_hostname = document.location.hostname;
+        //         // if serviceWorker image
+        //         let optimised_image_url = getServiceWorkerUrl(url);
+        //         if (optimised_image_url !== undefined){
+        //             //shimmercat.cloud -> original url  
+        //             im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
+        //             im.classList.add('scbca-original')
+        //         }else{
+        //             if (url.hostname === doc_hostname) {
+        //                 let original_url = originalURLOfImage(im);
+        //                 let use_url = toNoHAPsURL(original_url);
+        //                 im.src = use_url.toString();
+        //                 im.classList.add('scbca-original')
+        //             }
+        //         }
+        //         ;
+        //     }
+        // });
+        // // find all elements with a css background image of the specified src
+        // for(var img of document.querySelectorAll((`div[data-bgset]`))){
+        //     let bgSet = img.getAttribute('data-bgset')
+        //     for (var file of Object.keys(unoptimizedSizeModel)){
+        //         if(bgSet.includes(file) || bgSet === file){
+        //             img.classList.add('scbca-original');
+        //         }
+        //     }
+        // }
     }
 }
 
@@ -748,12 +1026,13 @@ let shimSelected = "select";
 browser.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
         if (request.hasOwnProperty("newShim")) {
+            console.log("Whitelisted? ", request.whitelist);
             if (request.newShim === "select") {
-                changeToSelected();
+                changeToSelected(request.whitelist);
             } else if (request.newShim === "optimized") {
-                changeToOptimized();
+                changeToOptimized(request.whitelist);
             } else if (request.newShim === "unoptimized") {
-                changeToUnoptimized();
+                changeToUnoptimized(request.whitelist);
             }
             shimSelected = request.newShim;
             return { status: "ok" };
@@ -821,7 +1100,7 @@ function CheckWorkerProcess () {
 }
 
 // function for getting the supported serviceWorker domains from root/sc-sw.min.js
-function getServiceWorkerDomains(){
+function getServiceWorkerDomains(isWhitelisted){
     let origin = window.location.origin;
     //get sc script to get serviceWorker domains
     let fetch_sc_script = new Request(
@@ -850,6 +1129,6 @@ function getServiceWorkerDomains(){
             serviceWorker = true;
         }
     }).then(function(){
-        displaySelected()
+        displaySelected(isWhitelisted)
     })
 } 
