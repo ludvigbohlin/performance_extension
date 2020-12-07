@@ -23,7 +23,8 @@ let startup = true;
 
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (sender.tab && sender.tab.active && request.hasOwnProperty('active')) {
+    // if (sender.tab && sender.tab.active && request.hasOwnProperty('active')) {
+    if (sender.tab && sender.tab.active && !request.hasOwnProperty('error')) {
         setTimeout(function(){
         $('[data-toggle="popover"]').popover({
             html: true,
@@ -31,9 +32,9 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
           })}, 4000);
 
         localStorage.setItem('clog', JSON.stringify(request));
-        if (request.active === false) {
-            vue_data["Active"] = false;
-        }
+        // if (request.active === false) {
+        //     vue_data["Active"] = false;
+        // }
         vue_data["imagesCount"]=Object.keys(request.optimized).length;
         vue_data["ServiceWorker"] = request.serviceWorker;
         summarizeImagesModel(request);
@@ -42,6 +43,13 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         // make radiobuttons visible 
         document.getElementById('radiobutton-area').style.display = 'block';
 
+    }
+
+    if(sender.tab && sender.tab.active && request.hasOwnProperty('error')){
+        if (request.active === false) {
+            vue_data["Active"] = false;
+        } 
+        vue_data["Spinner"] = false;
     }
 });
 

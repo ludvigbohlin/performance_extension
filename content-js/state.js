@@ -59,9 +59,10 @@ function* iterateOnWhitelistedImages() {
                             populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
                             yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];    
                         }else{
-                            // image different host from page and not serviceWorker
+                            // image different host from page and not serviceWorker. 
+                            // if this happens for all images then we need to display error msg
 
-                            // check if image is shimmercat-enabled
+
 
                         }
                     } catch (error) {
@@ -130,33 +131,6 @@ function* iterateOnAllImages() {
                 image: im.src
             })
             yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-
-            // if (originalUrl.hostname === doc_hostname) {
-            //     isServiceWorkerImage = false;
-            //     // remove HAPS compression
-            //     originalUrl = toNoHAPsURL(originalURLOfImage(im));  
-            //     populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
-            //     yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-            // }else {
-            //     try {
-            //         isServiceWorkerImage = true;
-            //         originalUrl = getOriginalFromServiceWorkerUrl(im.currentSrc);
-            //         optimisedUrl = im.currentSrc;
-            //         if(originalUrl !== undefined && optimisedUrl !== undefined){
-            //             im.src = originalUrl
-            //             imageDict[optimisedUrl] = im;
-            //             populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
-            //             yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];    
-            //         }else{
-            //             // image different host from page and not serviceWorker
-
-            //             // check if image is shimmercat-enabled
-
-            //         }
-            //     } catch (error) {
-            //         console.log(error)
-            //     }
-            // }
         }
         if (retrieving(im.style['backgroundImage'])) {
             let returned_url = retrieving(im.style['backgroundImage']);
@@ -173,14 +147,6 @@ function* iterateOnAllImages() {
 
             // remove HAPS compression
             originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
-            //     // optimisedUrl = originalUrl;
-            //     optimisedUrl = originalURLOfImage(im);
-            //     if (originalUrl.hostname === doc_hostname) {
-            //         // isServiceWorkerImage = 'origin'
-            //         isServiceWorkerImage = false;
-
-            //         // remove HAPS compression
-            //         originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
 
             // instead of using populateUnoptimizedSizeModel we need to make a background workaround
             chrome.runtime.sendMessage({
@@ -192,30 +158,6 @@ function* iterateOnAllImages() {
 
             // populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
             yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-            
-            // // check if image is supported by the serviceWorker
-            // let optimised_image_url = getServiceWorkerUrl(originalUrl);
-            // if (optimised_image_url !== undefined){
-            //     // isServiceWorkerImage = 'serviceWorker';
-            //     isServiceWorkerImage = true;
-            //     optimisedUrl = optimised_image_url;
-            //     populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
-            //     yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-            // // else image optimisation is processed via origin
-            // }else{
-            //     // optimisedUrl = originalUrl;
-            //     optimisedUrl = originalURLOfImage(im);
-            //     if (originalUrl.hostname === doc_hostname) {
-            //         // isServiceWorkerImage = 'origin'
-            //         isServiceWorkerImage = false;
-
-            //         // remove HAPS compression
-            //         originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
-            //         populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src); 
-            //         yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-            //     // image compression not supported for the domain as it is not defined in serviceWorker and not the root url of the site
-            //     }else continue;
-            // }
         }
     }
 }
@@ -245,7 +187,6 @@ function displaySelected(isWhitelisted){
             im.currentSrc = originalUrl;
             im.src = originalUrl;
     
-            // urlPointsToStatus(optimisedUrl, isServiceWorkerImage, originalUrl);
             // need to make a CORS request so we need to pass urls to background.js and perform the requests there. 
             chrome.runtime.sendMessage({
                 command: "imageFetch", 
@@ -254,8 +195,17 @@ function displaySelected(isWhitelisted){
                 image: originalUrl
             })
         }  
-
     }
+    setTimeout(function(){
+        if (Object.keys(unoptimizedSizeModel).length == 0){
+            console.log("LENGTH: ", Object.keys(unoptimizedSizeModel).length);
+            browser.runtime.sendMessage({
+                active: false,
+                error: 'unsupported'
+            });
+        }
+    }, 10000)
+    
 }
 
 // callback function for returning total chunk size of chunked image transfer
@@ -413,27 +363,6 @@ function allAddCustomStyles(classname){
                     im.src = use_url.toString(); 
                 }
                 im.classList.add(classname) 
-
-            // let dataset = im.dataset
-            // if (dataset.hasOwnProperty("scbOriginalLocation")) {
-            //     console.log("tru");
-            //     im.src = dataset.scbOriginalLocation;
-            //     im.classList.add(classname)
-            // }
-            // im.classList.add('scbca-optimised')
-            // let optimised_image_url = getServiceWorkerUrl(url);
-            // if (optimised_image_url !== undefined){
-            //     im.src = optimised_image_url;
-            //     im.classList.add('scbca-optimised')
-            // }else{
-            //     if (url.hostname === doc_hostname) {;
-            //         let dataset = im.dataset;
-            //         if (dataset.hasOwnProperty("scbOriginalLocation")) {
-            //             im.src = dataset.scbOriginalLocation;
-            //             im.classList.add('scbca-optimised')
-            //         }
-            //     }
-            // }
         }
         if (retrieving(im.style['backgroundImage'])) {
             let returned_url = retrieving(im.style['backgroundImage']);
@@ -452,26 +381,6 @@ function allAddCustomStyles(classname){
                     im.src = use_url.toString(); 
                 }
                 im.classList.add(classname)
-            // if (dataset.hasOwnProperty("scbOriginalLocation")) {
-            //     im.src = dataset.scbOriginalLocation;
-            //     im.classList.add(classname)
-            // }
-            
-            // // if serviceWorker image
-            // let optimised_image_url = getServiceWorkerUrl(url);
-            // if (optimised_image_url !== undefined){
-            //     // im.src = optimised_image_url;
-            //     im.style.backgroundImage = `url(${optimised_image_url})`
-            //     im.classList.add('scbca-optimised')
-            // }else{
-            //     if (url.hostname === doc_hostname) {
-            //         let dataset = im.dataset;
-            //         if (dataset.hasOwnProperty("scbOriginalLocation")) {
-            //             im.src = dataset.scbOriginalLocation;
-            //             im.classList.add('scbca-optimised')
-            //         }
-            //     }
-            // }
         }
         
     }); 
@@ -963,40 +872,6 @@ function changeToUnoptimized(isWhitelisted) {
         }else{
             allAddCustomStyles('scbca-original') 
         }
-        // let images = document.querySelectorAll("*,img.lazyloaded");
-        // images.forEach((im) => {
-        //     // remove styles
-        //     removeCustomStyles(im);
-        //     const from_url = im.currentSrc;
-        //     if (canUseUrl(from_url)) {
-        //         let url = new URL(im.currentSrc);
-        //         let doc_hostname = document.location.hostname;
-        //         // if serviceWorker image
-        //         let optimised_image_url = getServiceWorkerUrl(url);
-        //         if (optimised_image_url !== undefined){
-        //             //shimmercat.cloud -> original url  
-        //             im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
-        //             im.classList.add('scbca-original')
-        //         }else{
-        //             if (url.hostname === doc_hostname) {
-        //                 let original_url = originalURLOfImage(im);
-        //                 let use_url = toNoHAPsURL(original_url);
-        //                 im.src = use_url.toString();
-        //                 im.classList.add('scbca-original')
-        //             }
-        //         }
-        //         ;
-        //     }
-        // });
-        // // find all elements with a css background image of the specified src
-        // for(var img of document.querySelectorAll((`div[data-bgset]`))){
-        //     let bgSet = img.getAttribute('data-bgset')
-        //     for (var file of Object.keys(unoptimizedSizeModel)){
-        //         if(bgSet.includes(file) || bgSet === file){
-        //             img.classList.add('scbca-original');
-        //         }
-        //     }
-        // }
     }
 }
 
