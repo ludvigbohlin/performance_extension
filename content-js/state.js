@@ -204,7 +204,7 @@ function displaySelected(isWhitelisted){
                 error: 'unsupported'
             });
         }
-    }, 10000)
+    }, 6000)
     
 }
 
