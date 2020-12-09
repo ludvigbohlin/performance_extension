@@ -17,9 +17,8 @@ let serviceWorker = false;
 let serviceWorkerDomains = {};
 let imageDict = {};
 
-// function that iterates through images in DOM & returns original & optimised image sources
+// function that iterates through images in DOM & returns original & optimised image sources (when whitelist box is unchecked)
 function* iterateOnWhitelistedImages() {
-    // let images = document.querySelectorAll('*,img.lazyloaded');
     let images = document.querySelectorAll('img');
     let isServiceWorkerImage = false;
     for (let im of images) {
@@ -60,13 +59,9 @@ function* iterateOnWhitelistedImages() {
                             yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];    
                         }else{
                             // image different host from page and not serviceWorker. 
-                            // if this happens for all images then we need to display error msg
-
-
-
                         }
                     } catch (error) {
-                        console.log(error)
+                        console.error(error)
                     }
                 }
             }
@@ -82,7 +77,6 @@ function* iterateOnWhitelistedImages() {
             // check if image is supported by the serviceWorker
             let optimised_image_url = getServiceWorkerUrl(originalUrl);
             if (optimised_image_url !== undefined){
-                // isServiceWorkerImage = 'serviceWorker';
                 isServiceWorkerImage = true;
                 optimisedUrl = optimised_image_url;
                 populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
@@ -92,7 +86,6 @@ function* iterateOnWhitelistedImages() {
                 // optimisedUrl = originalUrl;
                 optimisedUrl = originalURLOfImage(im);
                 if (originalUrl.hostname === doc_hostname) {
-                    // isServiceWorkerImage = 'origin'
                     isServiceWorkerImage = false;
 
                     // remove HAPS compression
@@ -106,8 +99,8 @@ function* iterateOnWhitelistedImages() {
     }
 }
 
+// function that iterates over images when whitelist checkbox is checked
 function* iterateOnAllImages() {
-    // let images = document.querySelectorAll('*,img.lazyloaded');
     let images = document.querySelectorAll('img');
     let isServiceWorkerImage = false;
     for (let im of images) {
@@ -156,7 +149,6 @@ function* iterateOnAllImages() {
                 image: im.src
             })
 
-            // populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
             yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
         }
     }
@@ -174,7 +166,6 @@ function displaySelected(isWhitelisted){
     // only certain domains allowed
     if (isWhitelisted){
         for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnWhitelistedImages()) {
-            // console.log(im);
             im.currentSrc = originalUrl;
             im.src = originalUrl;
     
@@ -183,7 +174,6 @@ function displaySelected(isWhitelisted){
     }else{
         // all domains allowed
         for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnAllImages()) {
-            // console.log(im);
             im.currentSrc = originalUrl;
             im.src = originalUrl;
     
@@ -196,9 +186,9 @@ function displaySelected(isWhitelisted){
             })
         }  
     }
+    // functionality that is used to display failure in popup for sites have no same domain images and whitelist checkbox is unchecked
     setTimeout(function(){
         if (Object.keys(unoptimizedSizeModel).length == 0){
-            console.log("LENGTH: ", Object.keys(unoptimizedSizeModel).length);
             browser.runtime.sendMessage({
                 active: false,
                 error: 'unsupported'
@@ -339,8 +329,8 @@ function removeCustomStyles(im_element) {
         im_element.classList.remove(token);
     }
 }
+// function that adds all custom styles on view change for when whitelist checkbox unchecked
 function allAddCustomStyles(classname){
-    // let images = document.querySelectorAll('*,img.lazyloaded');
     let images = document.querySelectorAll('img');
     //iterate through images and change src to the optimised version
     images.forEach((im) => {
@@ -396,9 +386,9 @@ function allAddCustomStyles(classname){
 }
 
 
-
+// function that adds all custom styles on view change for when whitelist checkbox checked
 function whitelistedAddCustomStyles(classname){
-    let images = document.querySelectorAll('*,img.lazyloaded');
+    let images = document.querySelectorAll('img');
 
     //iterate through images and change src to the optimised version
     images.forEach((im) => {
@@ -641,7 +631,7 @@ function urlPointsToStatus(url, isServiceWorkerImage, im) {
             if (response.status === 200) {
             }
             else {
-                console.log("error");
+                console.error("error");
             }
         }                                
     );
@@ -826,7 +816,7 @@ function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
             if (response.status === 200) {
             }
             else {
-                console.log("error");
+                console.error("error");
             }
         }, 
         (response) => {}                                
@@ -901,7 +891,6 @@ let shimSelected = "select";
 browser.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
         if (request.hasOwnProperty("newShim")) {
-            console.log("Whitelisted? ", request.whitelist);
             if (request.newShim === "select") {
                 changeToSelected(request.whitelist);
             } else if (request.newShim === "optimized") {
@@ -942,9 +931,7 @@ browser.runtime.onMessage.addListener(
                 if(!isChunked){
                     window.setTimeout(sendModelSummaries, 2000);
                     hasSentModel = true;
-                    // sendModelSummaries()
                 }else{
-                    // sendModelSummaries()
                     window.setTimeout(sendModelSummaries, 4000);
                     hasSentModel = true;
                 }

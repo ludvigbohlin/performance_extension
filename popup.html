@@ -126,12 +126,10 @@
                 <div class="filetypes-count-div">
                     <table>
                         <tr>
-                            <!-- <th>Filetype</th> -->
                             <th>Origin</th>
                             <th>ShimmerCat</th>
                         </tr>
                             <tr v-for="(value, name, index) in filetypes">
-                                <!-- <td >{{value}}</td> -->
                                 <td >{{getOriginFiletype(value)}} {{value}} </td>
                                 <td >{{getOptimisedFiletype(value)}} {{value}}</td>
                             </tr>

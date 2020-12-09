@@ -31,6 +31,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 
   }
+  // fetch image for sites when whitelist checkbox checked
   if(request.command === 'imageFetch'){
     let headers = new Headers({
       "cache-control": "no-cache",
@@ -54,7 +55,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   prom.then(
     (response) => {
         if (response.status === 200) {
-          // console.log("success!")
           if(request.type === 'original'){
             originalImages[request.url] = request.image;  
           }else{
@@ -65,7 +65,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
           }
         }
         else {
-            console.log("error");
+            console.error("error");
         }
     }                                
   );
@@ -94,8 +94,6 @@ function install_rules() {
 
 function install_context_menus() {
   browser.contextMenus.removeAll().then(() => {
-    console.log("Removed all menus!");
-
     // Let's create the first one: add bad image
     browser.contextMenus.create({
       title: "Mark bad compression",
@@ -237,7 +235,6 @@ chrome.webRequest.onCompleted.addListener(function(details){
     // if it is a serviceWorker image
     if(optimisedImages[details.url]["isServiceWorkerImage"]){
       if(details.tabId === -1 && details.frameId === -1){
-      // if(details.parentFrameId === -1){
         let filetype = new_filetype_from_headers(details.responseHeaders);
         if (!(filetype.includes('image'))){
           delete optimisedImages[details.url]
