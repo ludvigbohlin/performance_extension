@@ -23,7 +23,7 @@ let startup = true;
 
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (sender.tab && sender.tab.active && request.hasOwnProperty('active')) {
+    if (sender.tab && sender.tab.active && !request.hasOwnProperty('error')) {
         setTimeout(function(){
         $('[data-toggle="popover"]').popover({
             html: true,
@@ -31,9 +31,6 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
           })}, 4000);
 
         localStorage.setItem('clog', JSON.stringify(request));
-        if (request.active === false) {
-            vue_data["Active"] = false;
-        }
         vue_data["imagesCount"]=Object.keys(request.optimized).length;
         vue_data["ServiceWorker"] = request.serviceWorker;
         summarizeImagesModel(request);
@@ -42,6 +39,13 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         // make radiobuttons visible 
         document.getElementById('radiobutton-area').style.display = 'block';
 
+    }
+
+    if(sender.tab && sender.tab.active && request.hasOwnProperty('error')){
+        if (request.active === false) {
+            vue_data["Active"] = false;
+        } 
+        vue_data["Spinner"] = false;
     }
 });
 
@@ -78,8 +82,6 @@ function summarizeImagesModel(images_summary_input) {
             }
         }
         vue_data["cors_error_number"] = cors_error_number;
-        //make tooltip visible
-        // document.getElementById('cors-toolip-div').style.display = 'block';
     }
 
     // calculate total size of all original images found
@@ -113,7 +115,6 @@ function summarizeImagesModel(images_summary_input) {
     for (const file of Object.keys(images_summary_input.unoptimized)){
         var optimizedPathnameKey = Object.keys(images_summary_input.optimized).find(searchKey => images_summary_input.optimized[searchKey]["pathname"] === images_summary_input.unoptimized[file]["pathname"]);
         if (optimizedPathnameKey === undefined){
-            console.log(key);
         }
         let filetype = images_summary_input.unoptimized[file]["filetype"];
         if(!(filetype in filetype_data["origin"])){
@@ -202,17 +203,20 @@ window.vue_body_app = new Vue({
     data: vue_data,
     el: "#app-root",
     methods: {
-        changeShim: function (to_what) {
+        changeShim: function (to_what, isWhitelisted) {
             browser.tabs.query({
                 'active': true,
                 'currentWindow': true
             })
                 .then(
                     (tabs) => {
-                        return browser.tabs.sendMessage(tabs[0].id, { newShim: to_what });
+                        
+                        return browser.tabs.sendMessage(tabs[0].id, { 
+                            newShim: to_what,
+                            whitelist: isWhitelisted
+                        });
                     })
                 .then((response) => {
-                    // console.log(response);
                 });
             this.saveData();
         },
@@ -225,10 +229,10 @@ window.vue_body_app = new Vue({
         },
         // function to change state of splashscreen
         SplashScreenChange: function () {
-
+            var isWhitelisted = !document.getElementById('whitelist-checkbox').checked
             vue_data["SplashScreen"] = false;
             vue_data["Spinner"] = true;
-            this.changeShim("select");
+            this.changeShim("select", isWhitelisted);
 
         },
         getOriginFiletype: function(index){
@@ -255,6 +259,8 @@ window.vue_body_app = new Vue({
 });
 
 document.getElementById('submit-btn').addEventListener('click', function(){
+    // tell state.js the state of whitelist checkbox
+
     // force select view
     vue_data["shim"] = "select";
 });
@@ -270,10 +276,9 @@ window.addEventListener('load', function(){
                 return browser.tabs.sendMessage(tabs[0].id, { "loaded": true });
             })
         .then((response) => {
-            console.log(response);
         })
         .catch((error) =>{
-            console.log(error);
+            console.error(error);
         });
 })
 

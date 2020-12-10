@@ -356,3 +356,18 @@ th {
 .popover{
     pointer-events: none;
 }
+
+.whitelist-checkbox{
+    font-size: 12px;
+}
+
+input[type=checkbox]
+{
+  /* Checkbox sizes */
+  -ms-transform: scale(0/8); /* IE */
+  -moz-transform: scale(0.8); /* FF */
+  -webkit-transform: scale(0.8); /* Safari and Chrome */
+  -o-transform: scale(0.8); /* Opera */
+  transform: scale(0.8);
+  padding: 10px;
+}
