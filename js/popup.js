@@ -70,7 +70,7 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
  */
 function summarizeImagesModel(images_summary_input) {
     // if original, optimised image count is not equal
-    if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length ){
+    if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length && images_summary_input.cors_error == true ){
         vue_data['cors_error'] = true;
         
         // get number of serviceworker images that are not in original images but are in optimised

@@ -7,7 +7,10 @@ let isChunked = false;
 // boolean to check if we have manipulated DOM by changing view and thus mutating all selectors
 let canSendModels = true;
 // bolean to check if we've sent initial models yet
-let hasSentModel = false
+let hasSentModel = false;
+
+// boolean to check if extension is in whitelist mode
+let isWhitelisted = true;
 
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
@@ -279,13 +282,14 @@ async function changeToSelected(isWhitelisted) {
 }
 
 // function that sends data to popup.js
-function sendModelSummaries() {
+function sendModelSummaries(cors_error=true) {
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
         'optimized': optimizedSizeModel,
         'active': Active,
         'serviceWorker': serviceWorker,
+        'cors_error': cors_error
     }).then(
         () => { },
         () => {},
@@ -899,6 +903,7 @@ browser.runtime.onMessage.addListener(
                 changeToUnoptimized(request.whitelist);
             }
             shimSelected = request.newShim;
+            isWhitelisted =  request.whitelist
             return { status: "ok" };
         } else if (request.hasOwnProperty("refreshView") && shimSelected === "select") {
             changeToSelected();
@@ -921,6 +926,8 @@ browser.runtime.onMessage.addListener(
                 "size": indicated_size,
                 "filetype": filetype,
             };
+            // console.log(url)
+            // console.log(data)
             handleImageHeadersCallback(data,url, im, kind);
             return { status: "ok" };
         }
@@ -929,15 +936,18 @@ browser.runtime.onMessage.addListener(
             // all images have been processed, now set timeout
             if(canSendModels){
                 if(!isChunked){
-                    window.setTimeout(sendModelSummaries, 2000);
+
+                    if(isWhitelisted){
+                        window.setTimeout(sendModelSummaries, 2000);
+                    }else{
+                        window.setTimeout(function(){sendModelSummaries(false)}, 2000); 
+                    }
                     hasSentModel = true;
                 }else{
                     window.setTimeout(sendModelSummaries, 4000);
                     hasSentModel = true;
                 }
             }   
-
-        
         }
         if(request.hasOwnProperty("loaded")){
             // allow sending of models
