@@ -135,7 +135,7 @@
                             </tr>
                     </table>
                     <div v-if="cors_error">
-                        <label>{{cors_error_number}} images served by service worker</label>
+                        <label>{{cors_error_number}} images that use chunked transfer</label>
                         <button id="cors-popover" class="tooltip-btn" data-html="true" data-toggle="popover" data-placement="left" 
                         data-content="<div id='cors' class='text-ul-li  popover-div'>
                             If the total number of images differ between the origin and the optimised ones, this is due to a CORS issue as there is no 'Access-Control-Allow-Origin' header present on the original image resource.
