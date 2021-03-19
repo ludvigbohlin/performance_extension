@@ -691,43 +691,61 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                 "method": "GET",
                 "mode": mode,
                 "cache": "no-store"
-            });
-        
-        
-        fetch(fetch_request)
-        .then(async function (response){
-            if (response.status === 200) {
-                transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
-
-                if(filetype.includes("image")){
-                    let split_filename_arr = filetype.split('/');
-                    filetype = split_filename_arr[1];
-                    if (kind == 'original'){
-                        unoptimizedSizeModel[url] = {
-                            'status': status,
-                            'transfer_size': transfer_size,
-                            'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
-                            'filetype': filetype};
-                    }
-                    if (kind == 'optimised'){
-                        optimizedSizeModel[url] = {
-                            'status': status,
-                            'transfer_size': transfer_size,
-                            'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
-                            'filetype': filetype};
-                    }
-                }
-                return;
-            } 
-            else{
-                console.error("Request failed");
-                return;
             }
+        );
+        
+        // test
+        console.log("test");
+        chrome.runtime.sendMessage({
+            command: "chunkedImageFetch", 
+            url: url,
+            type: "original",
+            status: status,
+            pathname: urlObj.pathname + stripHAPsSearchParam(urlObj.search),
+            filetype: filetype 
         })
-        .catch((error) => {
-            console.error(error);
-            return;
-        })
+
+
+        // console.log("logging details: ");
+        // console.log("status: ", status);
+        // console.log("pathname: ", urlObj.pathname + stripHAPsSearchParam(urlObj.search));
+        // console.log("filetype: ", filetype);
+
+
+        // fetch(fetch_request)
+        // .then(async function (response){
+        //     if (response.status === 200) {
+        //         transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
+
+        //         if(filetype.includes("image")){
+        //             let split_filename_arr = filetype.split('/');
+        //             filetype = split_filename_arr[1];
+        //             if (kind == 'original'){
+        //                 unoptimizedSizeModel[url] = {
+        //                     'status': status,
+        //                     'transfer_size': transfer_size,
+        //                     'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
+        //                     'filetype': filetype};
+        //             }
+        //             if (kind == 'optimised'){
+        //                 optimizedSizeModel[url] = {
+        //                     'status': status,
+        //                     'transfer_size': transfer_size,
+        //                     'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
+        //                     'filetype': filetype};
+        //             }
+        //         }
+        //         return;
+        //     } 
+        //     else{
+        //         console.error("Request failed");
+        //         return;
+        //     }
+        // })
+        // .catch((error) => {
+        //     console.error(error);
+        //     return;
+        // })
     }
 }
 
@@ -938,7 +956,7 @@ browser.runtime.onMessage.addListener(
                 if(!isChunked){
 
                     if(isWhitelisted){
-                        window.setTimeout(sendModelSummaries, 2000);
+                        window.setTimeout(sendModelSummaries, 5000);
                     }else{
                         window.setTimeout(function(){sendModelSummaries(false)}, 2000); 
                     }
@@ -953,6 +971,35 @@ browser.runtime.onMessage.addListener(
             // allow sending of models
             hasSentModel = false;
             canSendModels = true;
+        }
+
+        if (request.hasOwnProperty("transfer_size")){
+            console.log("transfer size received: ");
+            console.log(request);
+            // console.log(request.transfer_size);
+            var filetype = request.filetype;
+            var kind = request.type;
+            var status = request.status;
+            var pathname = request.pathname;
+            if(filetype.includes("image")){
+                let split_filename_arr = filetype.split('/');
+                filetype = split_filename_arr[1];
+                if (kind == 'original'){
+                    unoptimizedSizeModel[url] = {
+                        'status': status,
+                        'transfer_size': transfer_size,
+                        'pathname': pathname,
+                        'filetype': filetype};
+                }
+                if (kind == 'optimised'){
+                    optimizedSizeModel[url] = {
+                        'status': status,
+                        'transfer_size': transfer_size,
+                        'pathname': pathname,
+                        'filetype': filetype};
+                }
+            }
+            return;
         }
 }
 );

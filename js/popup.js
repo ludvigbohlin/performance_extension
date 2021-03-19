@@ -33,6 +33,7 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         localStorage.setItem('clog', JSON.stringify(request));
         vue_data["imagesCount"]=Object.keys(request.optimized).length;
         vue_data["ServiceWorker"] = request.serviceWorker;
+        console.log(request);
         summarizeImagesModel(request);
         vue_data["Spinner"] = false;
         

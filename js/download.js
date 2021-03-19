@@ -12,6 +12,7 @@ function download_csv(){
 	var d = [];
 	var e = [];
 	var combined = [];
+	console.log(data);
 
 	// populate array with unoptimised img urls
 	for (var key in data.unoptimized) {
