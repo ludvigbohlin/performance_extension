@@ -20,6 +20,14 @@ let serviceWorker = false;
 let serviceWorkerDomains = {};
 let imageDict = {};
 
+// array containing all urls we wish to ignore in any image parsing (used for non-whitelist functionality)
+let IGNORED_IMAGE_URLS = [
+    "cdn.klarna.com",
+    "shop.textalk.se",
+    "www.juliaspearls.com",
+    "images.ctfassets.net"
+]
+
 // function that iterates through images in DOM & returns original & optimised image sources (when whitelist box is unchecked)
 function* iterateOnWhitelistedImages() {
     let images = document.querySelectorAll('img');
@@ -108,6 +116,9 @@ function* iterateOnAllImages() {
     let isServiceWorkerImage = false;
     for (let im of images) {
         if (canUseUrl(im.currentSrc)) {
+            if((im.getAttribute("aria-hidden") ===  "true") || ( IGNORED_IMAGE_URLS.includes(new URL(im.currentSrc).host)) ){
+                continue;
+            }
             let originalUrl = new URL(im.currentSrc);
             let noHapsUrl = originalUrl.origin + originalUrl.pathname + stripHAPsSearchParam(originalUrl.search); 
             let optimisedUrl = '';
@@ -283,13 +294,15 @@ async function changeToSelected(isWhitelisted) {
 
 // function that sends data to popup.js
 function sendModelSummaries(cors_error=true) {
+    var domain  = window.location.hostname
     browser.runtime.sendMessage({
         'kind': 'model-summary',
         'unoptimized': unoptimizedSizeModel,
         'optimized': optimizedSizeModel,
         'active': Active,
         'serviceWorker': serviceWorker,
-        'cors_error': cors_error
+        'cors_error': cors_error,
+        'domain' : domain
     }).then(
         () => { },
         () => {},
@@ -694,8 +707,6 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
             }
         );
         
-        // test
-        console.log("test");
         chrome.runtime.sendMessage({
             command: "chunkedImageFetch", 
             url: url,
@@ -704,48 +715,6 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
             pathname: urlObj.pathname + stripHAPsSearchParam(urlObj.search),
             filetype: filetype 
         })
-
-
-        // console.log("logging details: ");
-        // console.log("status: ", status);
-        // console.log("pathname: ", urlObj.pathname + stripHAPsSearchParam(urlObj.search));
-        // console.log("filetype: ", filetype);
-
-
-        // fetch(fetch_request)
-        // .then(async function (response){
-        //     if (response.status === 200) {
-        //         transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
-
-        //         if(filetype.includes("image")){
-        //             let split_filename_arr = filetype.split('/');
-        //             filetype = split_filename_arr[1];
-        //             if (kind == 'original'){
-        //                 unoptimizedSizeModel[url] = {
-        //                     'status': status,
-        //                     'transfer_size': transfer_size,
-        //                     'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
-        //                     'filetype': filetype};
-        //             }
-        //             if (kind == 'optimised'){
-        //                 optimizedSizeModel[url] = {
-        //                     'status': status,
-        //                     'transfer_size': transfer_size,
-        //                     'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
-        //                     'filetype': filetype};
-        //             }
-        //         }
-        //         return;
-        //     } 
-        //     else{
-        //         console.error("Request failed");
-        //         return;
-        //     }
-        // })
-        // .catch((error) => {
-        //     console.error(error);
-        //     return;
-        // })
     }
 }
 
@@ -944,8 +913,6 @@ browser.runtime.onMessage.addListener(
                 "size": indicated_size,
                 "filetype": filetype,
             };
-            // console.log(url)
-            // console.log(data)
             handleImageHeadersCallback(data,url, im, kind);
             return { status: "ok" };
         }
@@ -974,9 +941,6 @@ browser.runtime.onMessage.addListener(
         }
 
         if (request.hasOwnProperty("transfer_size")){
-            console.log("transfer size received: ");
-            console.log(request);
-            // console.log(request.transfer_size);
             var filetype = request.filetype;
             var kind = request.type;
             var status = request.status;

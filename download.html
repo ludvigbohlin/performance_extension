@@ -1,8 +1,30 @@
 <!doctype html>  
 <html>  
-<head></head>  
-<body>
+<head>
+    <style>
+        body {
+            min-height: 430px !important;
+        }
+    </style>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css?family=Tomorrow|Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="js/download.js"></script> 
 
-<script src="js/download.js"></script> 
+</head>  
+<body>
+    <div class="title-block">
+        <header>
+            <span class="version" id="version"></span>
+            <img alt="logo" class="logo" src="icons/icon_128x128.png">
+            <h1>ShimmerCat Image Extension</h1>
+        </header>
+    </div>
+    <div id="app-root">
+        <div class="text-center">
+            <p class="m-25 f-size">
+                A CSV containing the compression statistics 
+                <br>for this site has been downloaded!</p>
+        </div>
+    </div>
 </body>  
 </html>  

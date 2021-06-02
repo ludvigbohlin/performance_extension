@@ -35,7 +35,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if(request.command === 'imageFetch'){
     let headers = new Headers({
       "cache-control": "no-cache",
-      "accept": "image/webp,image/apng,image/*",
+      "accept": "image/webp, image/avif, image/png,image/*",
       "accept-encoding": "gzip, deflate, br",});
     
       let mode = "cors";
@@ -73,11 +73,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
   // test
   if(request.command === 'chunkedImageFetch'){
-    console.log("performing a chunked image fetch")
-
     let headers = new Headers({
       "cache-control": "no-cache",
-      "accept": "image/webp,image/apng,image/*",
+      "accept": "image/webp, image/avif, image/png,image/*",
       "accept-encoding": "gzip, deflate, br",});
     
       let mode = "cors";
@@ -95,9 +93,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     fetch(fetch_request)
     .then((async function (response){
           if (response.status === 200) {
-            // console.log("before chunked");
             transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
-            // console.log(tran);
             browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
@@ -115,9 +111,8 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     );
                 }
               })
-            .then((response) => {
-              console.log(response);
-            })
+              .then(() => {
+              })
             // transfer_size.then(
             //   () =>{
             //   browser.tabs.query({ active: true, currentWindow: true })
@@ -244,9 +239,8 @@ function forward_mark(mark, maybe_url, info) {
                     );
                 }
               })
-            .then((response) => {
-              console.log(response);
-            });
+              .then(() => {
+              })
 
         });
     }

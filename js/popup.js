@@ -23,7 +23,8 @@ let startup = true;
 
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
 browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (sender.tab && sender.tab.active && !request.hasOwnProperty('error')) {
+    // if (sender.tab && sender.tab.active && !request.hasOwnProperty('error')) {
+    if (sender.tab && sender.tab.active && !request.hasOwnProperty('error') && !request.hasOwnProperty('command')) {
         setTimeout(function(){
         $('[data-toggle="popover"]').popover({
             html: true,
@@ -33,7 +34,6 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         localStorage.setItem('clog', JSON.stringify(request));
         vue_data["imagesCount"]=Object.keys(request.optimized).length;
         vue_data["ServiceWorker"] = request.serviceWorker;
-        console.log(request);
         summarizeImagesModel(request);
         vue_data["Spinner"] = false;
         
@@ -42,7 +42,8 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
     }
 
-    if(sender.tab && sender.tab.active && request.hasOwnProperty('error')){
+    // if(sender.tab && sender.tab.active && request.hasOwnProperty('error')){
+    if(sender.tab && sender.tab.active && request.hasOwnProperty('error') && !request.hasOwnProperty('command')){
         if (request.active === false) {
             vue_data["Active"] = false;
         } 
