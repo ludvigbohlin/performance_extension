@@ -15,8 +15,8 @@ let vue_data = {
     "filetype_data": {},
     "filetypes": [],
     "cors_error": false,
+    "origin_error": false,
     "cors_error_number": 0,
-    
 };
 
 let startup = true;
@@ -29,7 +29,8 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         $('[data-toggle="popover"]').popover({
             html: true,
             trigger: 'hover'
-          })}, 4000);
+        //   })}, 4000);
+        })}, 100);
 
         localStorage.setItem('clog', JSON.stringify(request));
         vue_data["imagesCount"]=Object.keys(request.optimized).length;
@@ -71,19 +72,45 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
  * @param {ImagesSummaryInput} images_summary_input
  */
 function summarizeImagesModel(images_summary_input) {
-    // if original, optimised image count is not equal
-    if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length && images_summary_input.cors_error == true ){
-        vue_data['cors_error'] = true;
-        
-        // get number of serviceworker images that are not in original images but are in optimised
-        let cors_error_number = 0;
-        for (var key in images_summary_input.optimized){
-            var originalKey = Object.keys(images_summary_input.unoptimized).find(searchKey => images_summary_input.unoptimized[searchKey]["pathname"] === images_summary_input.optimized[key]["pathname"]);
-            if (originalKey === undefined){
-                cors_error_number +=1; 
+    console.log(Object.keys(images_summary_input.optimized).length);
+    console.log(Object.keys(images_summary_input.unoptimized).length);
+
+    if (images_summary_input.serviceWorker){
+        // if original, optimised image count is not equal
+        if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length && images_summary_input.cors_error == true ){
+            vue_data['cors_error'] = true;
+            
+            // get number of serviceworker images that are not in original images but are in optimised
+            let cors_error_number = 0;
+            for (var key in images_summary_input.optimized){
+                var originalKey = Object.keys(images_summary_input.unoptimized).find(searchKey => images_summary_input.unoptimized[searchKey]["pathname"] === images_summary_input.optimized[key]["pathname"]);
+                if (originalKey === undefined){
+                    cors_error_number +=1; 
+                }
             }
+            vue_data["cors_error_number"] = cors_error_number;
+        }else{
+            vue_data['cors_error'] = false;
+
         }
-        vue_data["cors_error_number"] = cors_error_number;
+    }else{
+        // if original, optimised image count is not equal
+        if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length && images_summary_input.cors_error == true ){
+            vue_data['origin_error'] = true;
+            
+            // get number of serviceworker images that are not in original images but are in optimised
+            let cors_error_number = 0;
+            for (var key in images_summary_input.optimized){
+                var originalKey = Object.keys(images_summary_input.unoptimized).find(searchKey => images_summary_input.unoptimized[searchKey]["pathname"] === images_summary_input.optimized[key]["pathname"]);
+                if (originalKey === undefined){
+                    cors_error_number +=1; 
+                }
+            }
+            vue_data["cors_error_number"] = cors_error_number;
+        }else{
+            vue_data['origin_error'] = false;
+        }
+
     }
 
     // calculate total size of all original images found

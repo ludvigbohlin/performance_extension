@@ -190,14 +190,23 @@ function displaySelected(isWhitelisted){
         for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnAllImages()) {
             im.currentSrc = originalUrl;
             im.src = originalUrl;
-    
+
             // need to make a CORS request so we need to pass urls to background.js and perform the requests there. 
-            chrome.runtime.sendMessage({
-                command: "imageFetch", 
-                url: optimisedUrl,
-                type: "optimised",
-                image: originalUrl
-            })
+            // chrome.runtime.sendMessage({
+            //     command: "imageFetch", 
+            //     url: optimisedUrl,
+            //     type: "optimised",
+            //     image: originalUrl
+            // })
+            setTimeout(
+                chrome.runtime.sendMessage({
+                    command: "imageFetch", 
+                    url: optimisedUrl,
+                    type: "optimised",
+                    image: originalUrl
+                })
+            , 100);
+
         }  
     }
     // functionality that is used to display failure in popup for sites have no same domain images and whitelist checkbox is unchecked
@@ -802,16 +811,16 @@ function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
         () => { },
     );
 
-    prom.then(
-        (response) => {
-            if (response.status === 200) {
-            }
-            else {
-                console.error("error");
-            }
-        }, 
-        (response) => {}                                
-    );
+    // prom.then(
+    //     (response) => {
+    //         if (response.status === 200) {
+    //         }
+    //         else {
+    //             console.error("error");
+    //         }
+    //     }, 
+    //     (response) => {}                                
+    // );
     
 }
 
@@ -925,7 +934,8 @@ browser.runtime.onMessage.addListener(
                     if(isWhitelisted){
                         window.setTimeout(sendModelSummaries, 5000);
                     }else{
-                        window.setTimeout(function(){sendModelSummaries(false)}, 2000); 
+                        // window.setTimeout(function(){sendModelSummaries(false)}, 2000); 
+                        window.setTimeout(sendModelSummaries, 2000); 
                     }
                     hasSentModel = true;
                 }else{
