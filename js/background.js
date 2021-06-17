@@ -35,7 +35,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if(request.command === 'imageFetch'){
     let headers = new Headers({
       "cache-control": "no-cache",
-      "accept": "image/webp,image/apng,image/*",
+      "accept": "image/webp, image/avif, image/png,image/*",
       "accept-encoding": "gzip, deflate, br",});
     
       let mode = "cors";
@@ -69,7 +69,71 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         }
     }                                
   );
+  }
+
+  // test
+  if(request.command === 'chunkedImageFetch'){
+    let headers = new Headers({
+      "cache-control": "no-cache",
+      "accept": "image/webp, image/avif, image/png,image/*",
+      "accept-encoding": "gzip, deflate, br",});
     
+      let mode = "cors";
+
+    let fetch_request = new Request(
+      request.url,
+      {
+          "headers": headers,
+          "method": "GET",
+          "mode": mode,
+          "cache": "no-store"
+      });
+  
+  
+    fetch(fetch_request)
+    .then((async function (response){
+          if (response.status === 200) {
+            transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
+            browser.tabs.query({ active: true, currentWindow: true })
+            .then(
+              (tabs) => {
+                if (tabs.length > 0) {
+                  browser.tabs.sendMessage(tabs[0].id, { 
+                    transfer_size: transfer_size,
+                    status: request.status,
+                    pathname: request.pathname,
+                    filetype: request.filetype,
+                    kind: request.type
+                  })
+                    .then(
+                      () => { console.log("message sent to content script") },
+                      () => { console.error("message was not sent! ") }
+                    );
+                }
+              })
+              .then(() => {
+              })
+            // transfer_size.then(
+            //   () =>{
+            //   browser.tabs.query({ active: true, currentWindow: true })
+            //   .then(
+            //     (tabs) => {
+            //       if (tabs.length > 0) {
+            //         browser.tabs.sendMessage(tabs[0].id, { transfer_size: transfer_size })
+            //           .then(
+            //             () => { console.log("message sent to content script") },
+            //             () => { console.error("message was not sent! ") }
+            //           );
+            //       }
+            //     })
+            //   .then((response) => {
+            //     console.log(response);
+            //   })
+            // }
+            // );
+          }
+        }
+    ));
   }
 });
 const ANALYZED_DOMAIN = 'https://tools.se';
@@ -175,9 +239,8 @@ function forward_mark(mark, maybe_url, info) {
                     );
                 }
               })
-            .then((response) => {
-              console.log(response);
-            });
+              .then(() => {
+              })
 
         });
     }
@@ -335,4 +398,65 @@ function new_filetype_from_headers(headers){
       }
   }
   return result; 
+}
+
+
+
+// test functions
+
+// constant to define how much loss compensation to give chunked transfer encoded images
+const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
+
+
+// callback function for returning total chunk size of chunked image transfer
+function onChunkedResponseComplete([result, response]) {
+  var transfer_size = Math.round(result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT));
+  return transfer_size;
+  // browser.tabs.query({ active: true, currentWindow: true })
+  //   .then(
+  //     (tabs) => {
+  //       if (tabs.length > 0) {
+  //         browser.tabs.sendMessage(tabs[0].id, { transfer_size: transfer_size })
+  //           .then(
+  //             () => { console.log("message sent to content script") },
+  //             () => { console.error("message was not sent! ") }
+  //           );
+  //       }
+  //     })
+  //   .then((response) => {
+  //     console.log(response);
+  //   })
+  // return Math.round(result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT));
+}
+
+// error handler for chunked image transfer
+function onChunkedResponseError(err) {
+  console.error(err)
+}
+
+// function that processes chunked image responses
+function processChunkedResponse(response) {
+  var count = 0;
+  var chunkSize = 0; 
+  var reader = response.body.getReader()
+  var decoder = new TextDecoder();
+  
+  return readChunk();
+
+  // use reader to read chunk and pass into appendChunks ready for size aggregation
+  function readChunk() {
+    return reader.read().then(appendChunks);
+  }
+  
+  // function that adds the length of each chunk to total chunk size in order to compute file size
+  function appendChunks(result) {
+    var chunk = decoder.decode(result.value || new Uint8Array, {stream: !result.done});
+    chunkSize += chunk.length;
+    count+=1;
+    if (result.done) {
+      return [chunkSize, response];
+    } else {
+          return readChunk();
+    }
+  }
 }
