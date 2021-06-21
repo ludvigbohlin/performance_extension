@@ -1,7 +1,7 @@
 body {
     background-color: white;
     width: 350px;
-    min-height: 500px !important;
+    /* min-height: 500px !important; */
     font-family: 'Open Sans',Helvetica,Arial,sans-serif;
     margin: 0;
     color: black;
@@ -185,6 +185,7 @@ h1 {
     background: #293c3c9c;
 }
 
+
 .p-position {
     margin: 0px;
     margin-left: 35px;
@@ -346,7 +347,7 @@ th {
 }
 
 .exportcsvdiv{
-    margin-top: 5%;
+    margin-top: 2%;
 }
 
 #stats-container{
@@ -371,3 +372,4 @@ input[type=checkbox]
   transform: scale(0.8);
   padding: 10px;
 }
+
