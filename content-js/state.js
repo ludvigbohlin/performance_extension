@@ -1,23 +1,17 @@
-
 // constant to define how much loss compensation to give chunked transfer encoded images
 const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
-
 // boolean to check whether some requests are chunked and thus require more time
 let isChunked = false;
 // boolean to check if we have manipulated DOM by changing view and thus mutating all selectors
 let canSendModels = true;
-// bolean to check if we've sent initial models yet
+// boolean to check if we've sent initial models yet
 let hasSentModel = false;
 
-// boolean to check if extension is in whitelist mode
-let isWhitelisted = true;
-
+// image payload data definitions
 let optimizedSizeModel = null;
 let unoptimizedSizeModel = null;
 let currentView = null;
 let Active = true;
-let serviceWorker = false;
-let serviceWorkerDomains = {};
 let imageDict = {};
 
 // array containing all urls we wish to ignore in any image parsing (used for non-whitelist functionality)
@@ -28,93 +22,13 @@ let IGNORED_IMAGE_URLS = [
     "images.ctfassets.net"
 ]
 
-// function that iterates through images in DOM & returns original & optimised image sources (when whitelist box is unchecked)
-function* iterateOnWhitelistedImages() {
+// function that iterates over all images on the screen
+function* iterateOverImages() {
     let images = document.querySelectorAll('img');
-    let isServiceWorkerImage = false;
+    // iterate over all images on the page
     for (let im of images) {
-        if (canUseUrl(im.currentSrc)) {
-            let originalUrl = new URL(im.currentSrc);
-            let noHapsUrl = originalUrl.origin + originalUrl.pathname + stripHAPsSearchParam(originalUrl.search); 
-            let optimisedUrl = '';
-            let doc_hostname = document.location.hostname;
-
-            // check if image is supported by the serviceWorker
-            let optimised_image_url = getServiceWorkerUrl(originalUrl);
-            if (optimised_image_url !== undefined){
-                isServiceWorkerImage = true;
-
-                optimisedUrl = optimised_image_url;
-                imageDict[optimisedUrl] = im;
-                populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
-                yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-            // else image optimisation is processed via origin
-            }else{
-                optimisedUrl = originalURLOfImage(im);
-                imageDict[noHapsUrl] = im;
-                if (originalUrl.hostname === doc_hostname) {
-                    isServiceWorkerImage = false;
-                    // remove HAPS compression
-                    originalUrl = toNoHAPsURL(originalURLOfImage(im));  
-                    populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
-                    yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-                }else {
-                    try {
-                        isServiceWorkerImage = true;
-                        originalUrl = getOriginalFromServiceWorkerUrl(im.currentSrc);
-                        optimisedUrl = im.currentSrc;
-                        if(originalUrl !== undefined && optimisedUrl !== undefined){
-                            im.src = originalUrl
-                            imageDict[optimisedUrl] = im;
-                            populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
-                            yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];    
-                        }else{
-                            // image different host from page and not serviceWorker. 
-                        }
-                    } catch (error) {
-                        console.error(error)
-                    }
-                }
-            }
-        }
-        if (retrieving(im.style['backgroundImage'])) {
-            let returned_url = retrieving(im.style['backgroundImage']);
-            let optimisedUrl = '';
-        
-            let originalUrl = new URL(returned_url);
-            imageDict[originalUrl] = im;
-            let doc_hostname = document.location.hostname;
-            
-            // check if image is supported by the serviceWorker
-            let optimised_image_url = getServiceWorkerUrl(originalUrl);
-            if (optimised_image_url !== undefined){
-                isServiceWorkerImage = true;
-                optimisedUrl = optimised_image_url;
-                populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src);
-                yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-            // else image optimisation is processed via origin
-            }else{
-                // optimisedUrl = originalUrl;
-                optimisedUrl = originalURLOfImage(im);
-                if (originalUrl.hostname === doc_hostname) {
-                    isServiceWorkerImage = false;
-
-                    // remove HAPS compression
-                    originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
-                    populateUnoptimizedSizeModel(originalUrl, isServiceWorkerImage, im.src); 
-                    yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
-                // image compression not supported for the domain as it is not defined in serviceWorker and not the root url of the site
-                }else continue;
-            }
-        }
-    }
-}
-
-// function that iterates over images when whitelist checkbox is checked
-function* iterateOnAllImages() {
-    let images = document.querySelectorAll('img');
-    let isServiceWorkerImage = false;
-    for (let im of images) {
+        // check for aria-hidden images, we want to ignore these as they serve no purpose
+        // also check if image domain is blacklisted
         if (canUseUrl(im.currentSrc)) {
             if((im.getAttribute("aria-hidden") ===  "true") || ( IGNORED_IMAGE_URLS.includes(new URL(im.currentSrc).host)) ){
                 continue;
@@ -122,40 +36,39 @@ function* iterateOnAllImages() {
             let originalUrl = new URL(im.currentSrc);
             let noHapsUrl = originalUrl.origin + originalUrl.pathname + stripHAPsSearchParam(originalUrl.search); 
             let optimisedUrl = '';
-            let doc_hostname = document.location.hostname;
 
             optimisedUrl = originalURLOfImage(im);
             imageDict[noHapsUrl] = im;
 
-            isServiceWorkerImage = false;
             // remove HAPS compression
             originalUrl = toNoHAPsURL(originalURLOfImage(im));  
-            // instead of using populateUnoptimizedSizeModel we need to make a background workaround
+            // send UNOPTIMISED image details to background script so we can make a CORS request to get the headers/details
             chrome.runtime.sendMessage({
                 command: "imageFetch", 
                 url: originalUrl,
                 type: "original",
                 image: im.src
             })
-            yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
+            // return image details to parent function 
+            yield [im, originalUrl, optimisedUrl];
         }
+        // if the image (using background-img css) src is valid
         if (retrieving(im.style['backgroundImage'])) {
+            if((im.getAttribute("aria-hidden") ===  "true") || ( IGNORED_IMAGE_URLS.includes(new URL(im.currentSrc).host)) ){
+                continue;
+            }
             let returned_url = retrieving(im.style['backgroundImage']);
             let optimisedUrl = '';
         
             let originalUrl = new URL(returned_url);
             imageDict[originalUrl] = im;
-            let doc_hostname = document.location.hostname;
 
             optimisedUrl = originalURLOfImage(im);
-
-
-            isServiceWorkerImage = false;
 
             // remove HAPS compression
             originalUrl = toNoHAPsURL(originalURLOfImage(im)); 
 
-            // instead of using populateUnoptimizedSizeModel we need to make a background workaround
+            // send UNOPTIMISED image details to background script so we can make a CORS request to get the headers/details
             chrome.runtime.sendMessage({
                 command: "imageFetch", 
                 url: originalUrl,
@@ -163,52 +76,32 @@ function* iterateOnAllImages() {
                 image: im.src
             })
 
-            yield [im, originalUrl, optimisedUrl, isServiceWorkerImage];
+            yield [im, originalUrl, optimisedUrl];
         }
     }
 }
 
-
-
-
 // function that displays various styles based on the status of the image
-function displaySelected(isWhitelisted){
+function displaySelected(){
     imageDict = {};
     optimizedSizeModel = {};
     unoptimizedSizeModel = {};
 
-    // only certain domains allowed
-    if (isWhitelisted){
-        for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnWhitelistedImages()) {
-            im.currentSrc = originalUrl;
-            im.src = originalUrl;
-    
-            urlPointsToStatus(optimisedUrl, isServiceWorkerImage, originalUrl);
-        } 
-    }else{
-        // all domains allowed
-        for (let [im, originalUrl,optimisedUrl, isServiceWorkerImage] of iterateOnAllImages()) {
-            im.currentSrc = originalUrl;
-            im.src = originalUrl;
+    // iterate over all images on page
+    for (let [im, originalUrl,optimisedUrl] of iterateOverImages()) {
+        im.currentSrc = originalUrl;
+        im.src = originalUrl;
 
-            // need to make a CORS request so we need to pass urls to background.js and perform the requests there. 
-            // chrome.runtime.sendMessage({
-            //     command: "imageFetch", 
-            //     url: optimisedUrl,
-            //     type: "optimised",
-            //     image: originalUrl
-            // })
-            setTimeout(
-                chrome.runtime.sendMessage({
-                    command: "imageFetch", 
-                    url: optimisedUrl,
-                    type: "optimised",
-                    image: originalUrl
-                })
-            , 100);
-
-        }  
-    }
+        // send OPTIMISED image details to background script so we can make a CORS request to get the headers/details
+        setTimeout(
+            chrome.runtime.sendMessage({
+                command: "imageFetch", 
+                url: optimisedUrl,
+                type: "optimised",
+                image: originalUrl
+            })
+        , 100);
+    }  
     // functionality that is used to display failure in popup for sites have no same domain images and whitelist checkbox is unchecked
     setTimeout(function(){
         if (Object.keys(unoptimizedSizeModel).length == 0){
@@ -218,87 +111,19 @@ function displaySelected(isWhitelisted){
             });
         }
     }, 6000)
-    
-}
-
-// callback function for returning total chunk size of chunked image transfer
-function onChunkedResponseComplete([result, response]) {
-    return Math.round(result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT));
-  }
-
-// error handler for chunked image transfer
-function onChunkedResponseError(err) {
-    console.error(err)
-}
-
-// function that processes chunked image responses
-function processChunkedResponse(response) {
-    var count = 0;
-    var chunkSize = 0; 
-    var reader = response.body.getReader()
-    var decoder = new TextDecoder();
-    
-    return readChunk();
-  
-    // use reader to read chunk and pass into appendChunks ready for size aggregation
-    function readChunk() {
-      return reader.read().then(appendChunks);
-    }
-    
-    // function that adds the length of each chunk to total chunk size in order to compute file size
-    function appendChunks(result) {
-      var chunk = decoder.decode(result.value || new Uint8Array, {stream: !result.done});
-      chunkSize += chunk.length;
-      count+=1;
-      if (result.done) {
-        return [chunkSize, response];
-      } else {
-            return readChunk();
-      }
-    }
-}
-
-// gets the relevant optimised url for an image hosted on a serviceWorker-supported site
-function getServiceWorkerUrl(url){
-    var host = url.host;
-    domains = Object.keys(serviceWorkerDomains);
-    if (host in domains){
-        return "https://" + serviceWorkerDomains[host] + url.pathname + url.search;
-    }else{
-        for (const domain of domains){
-            if (domain.includes(host) || host.includes(domain)){
-                return "https://" + serviceWorkerDomains[domain] + url.pathname + url.search; 
-            }
-        }
-        return undefined
-    }
 }
 
 // refreshes selectedview 
 async function refreshSelectedView() {
     if (currentView === "selected") {
-        // check if site is serviceWorker supported and if so, get serviceWorker domains that are used on the site
-        serviceWorker =  CheckWorkerProcess();
-        if (serviceWorker){
-            getServiceWorkerDomains();
-        }else{
-            displaySelected();
-        }
+        displaySelected();
     }
 }
 
 // changes the view to selected
-async function changeToSelected(isWhitelisted) {
-
+async function changeToSelected() {
     currentView = "selected";
-
-    // check if site is serviceWorker supported and if so, get serviceWorker domains that are used on the site
-    serviceWorker =  CheckWorkerProcess();
-    if (serviceWorker){
-        getServiceWorkerDomains(isWhitelisted);
-    }else{
-        displaySelected(isWhitelisted)
-    }
+    displaySelected()
 }
 
 // function that sends data to popup.js
@@ -309,7 +134,6 @@ function sendModelSummaries(cors_error=true) {
         'unoptimized': unoptimizedSizeModel,
         'optimized': optimizedSizeModel,
         'active': Active,
-        'serviceWorker': serviceWorker,
         'cors_error': cors_error,
         'domain' : domain
     }).then(
@@ -333,12 +157,6 @@ function highlightAsNonViable(im_element) {
     im_element.classList.add("scbca-non-viable");
 }
 
-// function that highlights a given element as an image processed by the serviceWorker
-function highlightAsServiceWorkerImage(im_element){
-    im_element.classList.add("scbca-serviceworker");
- 
-}
-
 // function that removes all styles for a given image element
 function removeCustomStyles(im_element) {
     const tokens = [
@@ -356,16 +174,13 @@ function removeCustomStyles(im_element) {
     }
 }
 // function that adds all custom styles on view change for when whitelist checkbox unchecked
-function allAddCustomStyles(classname){
+function addCustomStyles(classname){
     let images = document.querySelectorAll('img');
     //iterate through images and change src to the optimised version
     images.forEach((im) => {
         // remove styles
         removeCustomStyles(im);
         if (canUseUrl(im.currentSrc)) {
-            let url = new URL(im.currentSrc);
-            let doc_hostname = document.location.hostname;
-            
             // optimised
             if(classname === 'scbca-optimised'){
                 let dataset = im.dataset;
@@ -381,17 +196,14 @@ function allAddCustomStyles(classname){
                 im.classList.add(classname) 
         }
         if (retrieving(im.style['backgroundImage'])) {
-            let returned_url = retrieving(im.style['backgroundImage']);
-            let url = new URL(returned_url);
-            let doc_hostname = document.location.hostname;
              // optimised
              if(classname === 'scbca-optimised'){
                 let dataset = im.dataset;
                     if (dataset.hasOwnProperty("scbOriginalLocation")) {
                         im.src = dataset.scbOriginalLocation;
                     }
+                // unoptimised
                 }else{
-                    // unoptimised
                     let original_url = originalURLOfImage(im);
                     let use_url = toNoHAPsURL(original_url);
                     im.src = use_url.toString(); 
@@ -400,95 +212,7 @@ function allAddCustomStyles(classname){
         }
         
     }); 
-    // find all elements with a css background image of the specified src
-    for(var img of document.querySelectorAll((`div[data-bgset]`))){
-        let bgSet = img.getAttribute('data-bgset')
-        for (var file of Object.keys(unoptimizedSizeModel)){
-            if(bgSet.includes(file) || bgSet === file){
-                img.classList.add(classname);
-            }
-        }
-    }
-}
-
-
-// function that adds all custom styles on view change for when whitelist checkbox checked
-function whitelistedAddCustomStyles(classname){
-    let images = document.querySelectorAll('img');
-
-    //iterate through images and change src to the optimised version
-    images.forEach((im) => {
-        // remove styles
-        removeCustomStyles(im);
-        if (canUseUrl(im.currentSrc)) {
-            let url = new URL(im.currentSrc);
-            let doc_hostname = document.location.hostname;
-            let optimised_image_url = getServiceWorkerUrl(url);
-            if (optimised_image_url !== undefined){
-                // optimised
-                if (classname === 'scbca-optimised'){
-                    im.src = optimised_image_url;
-                }else{
-                    // unoptimised
-                    im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
-                }
-                im.classList.add(classname)
-
-            }else{
-                if (url.hostname === doc_hostname) {;
-                    // optimised
-                    if(classname === 'scbca-optimised'){
-                    let dataset = im.dataset;
-                        if (dataset.hasOwnProperty("scbOriginalLocation")) {
-                            im.src = dataset.scbOriginalLocation;
-                        }
-                    }else{
-                        // unoptimised
-                        let original_url = originalURLOfImage(im);
-                        let use_url = toNoHAPsURL(original_url);
-                        im.src = use_url.toString(); 
-                    }
-                    im.classList.add(classname)
-                }
-            }
-        }
-        if (retrieving(im.style['backgroundImage'])) {
-            let returned_url = retrieving(im.style['backgroundImage']);
-            let url = new URL(returned_url);
-            let doc_hostname = document.location.hostname;
-            
-            // if serviceWorker image
-            let optimised_image_url = getServiceWorkerUrl(url);
-            if (optimised_image_url !== undefined){
-                // optimised
-                if (classname === 'scbca-optimised'){
-                    im.src = optimised_image_url;
-                }else{
-                    // unoptimised
-                    im.src = getOriginalFromServiceWorkerUrl(optimised_image_url);
-                }
-                im.classList.add(classname)
-            }else{
-                if (url.hostname === doc_hostname) {
-                    // optimised
-                    if(classname === 'scbca-optimised'){
-                        let dataset = im.dataset;
-                            if (dataset.hasOwnProperty("scbOriginalLocation")) {
-                                im.src = dataset.scbOriginalLocation;
-                            }
-                        }else{
-                            // unoptimised
-                            let original_url = originalURLOfImage(im);
-                            let use_url = toNoHAPsURL(original_url);
-                            im.src = use_url.toString(); 
-                        }
-                        im.classList.add(classname)
-                }
-            }
-        }
-        
-    }); 
-    // find all elements with a css background image of the specified src
+    // add style to all elements with a css background image of the specified src
     for(var img of document.querySelectorAll((`div[data-bgset]`))){
         let bgSet = img.getAttribute('data-bgset')
         for (var file of Object.keys(unoptimizedSizeModel)){
@@ -500,17 +224,11 @@ function whitelistedAddCustomStyles(classname){
 }
 
 // function that changes the view to optimised images only 
-function changeToOptimized(isWhitelisted) {
+function changeToOptimized() {
     if(hasSentModel){
         canSendModels = false; 
         currentView = 'optimized';
-
-        if(isWhitelisted){
-            whitelistedAddCustomStyles('scbca-optimised')
-        }else{
-            allAddCustomStyles('scbca-optimised')
-        }
-        
+        addCustomStyles('scbca-optimised')
     }
 }
 
@@ -553,7 +271,7 @@ function canUseUrl(url) {
 
 
 // function that reads header values for a given image and determines the status of the image and how it will be visualised 
-function image_opt_status_from_headers(headers) {
+function getImageOptimisationStatus(headers) {
     let headers_status = null;
     for (let
         /** @type String[] */
@@ -581,7 +299,7 @@ function image_opt_status_from_headers(headers) {
 }
 
 // function that reads header values for a given image and determines the file size of the image for computing compression amount  
-function size_from_headers(headers) {
+function getSizeFromHeaders(headers) {
     let result = null;
     for (let
         /** @type String[] */
@@ -598,7 +316,7 @@ function size_from_headers(headers) {
 }
 
 // function that reads header values for a given image and determines the filetype of the image for filetype analytics  
-function filetype_from_headers(headers){
+function getFiletypeFromHeaders(headers){
     let result = null;
     for (let
         header_val_arr of headers.entries()) {
@@ -613,64 +331,9 @@ function filetype_from_headers(headers){
     return result; 
 }
 
-
-// function that makes a request to the optimised url of each image which then gives status information and file size
-function urlPointsToStatus(url, isServiceWorkerImage, im) {
-    let mode = "cors";
-    let headers = new Headers({
-    });
-
-    if(!isServiceWorkerImage){
-        mode = "same-origin";
-        headers = new Headers({
-            "cache-control": "no-cache",
-            "accept": "image/webp,image/apng,image/*",
-            "accept-encoding": "gzip, deflate, br",});
-    }
-
-    let fetch_request = new Request(
-        url,
-        {
-            "headers": headers,
-            "method": "GET",
-            "mode": mode,
-            "cache": "no-store"
-        });
-    
-    
-    let prom = fetch(fetch_request);
-
-    // notify background.js of the url we want to monitor
-    browser.runtime.sendMessage({
-        command: "imageTransfer",
-        url: url,
-        image: im,
-        kind: "optimised",
-        isServiceWorker: isServiceWorkerImage
-    }).then(
-        () =>{}, 
-        () => { },
-    );
-
-    prom.then(
-        (response) => {
-            if (response.status === 200) {
-            }
-            else {
-                console.error("error");
-            }
-        }                                
-    );
-
-}
-
 // function that handles all image metadata to get ready to send to popup
 function handleImageHeadersCallback(data,url, imageSource, kind){
     let urlObj = new URL(url); 
-    let im = imageDict[urlObj]
-    let h = highlightAsWebp.bind(null, im);
-    let g = highlightAsProcessing.bind(null, im);
-    let i = highlightAsNonViable.bind(null, im);
     let status = data.status;
     let transfer_size = data.size;
     let filetype = data.filetype;
@@ -680,6 +343,7 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
         classifyImages(status, imageSource, kind);
     }
     
+    // if we have transfer size (i.e not using a chunked transfer encoding)
     if (transfer_size !== null) {
         if(filetype.includes("image")){
             let split_filename_arr = filetype.split('/');
@@ -689,37 +353,25 @@ function handleImageHeadersCallback(data,url, imageSource, kind){
                 unoptimizedSizeModel[url] = {
                     'status': status,
                     'transfer_size': transfer_size,
-                    'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
+                    'pathname': urlObj.pathname,
                     'filetype': filetype};
             }
             if (kind == 'optimised'){
                 optimizedSizeModel[url] = {
                     'status': status,
                     'transfer_size': transfer_size,
-                    'pathname': urlObj.pathname + stripHAPsSearchParam(urlObj.search),
+                    'pathname': urlObj.pathname,
                     'filetype': filetype};
             }
         }
     }else{
+        // if image is using a chunked transfer encoding
         isChunked = true;
-        let mode = "cors";
-        let headers = new Headers({
-        });
-    
-        let fetch_request = new Request(
-            url,
-            {
-                "headers": new Headers(),
-                "method": "GET",
-                "mode": mode,
-                "cache": "no-store"
-            }
-        );
-        
+        // we need background script to fetch the image and compute the filesize from the image chunks
         chrome.runtime.sendMessage({
             command: "chunkedImageFetch", 
             url: url,
-            type: "original",
+            kind,
             status: status,
             pathname: urlObj.pathname + stripHAPsSearchParam(urlObj.search),
             filetype: filetype 
@@ -775,56 +427,8 @@ function classifyImages(status, url){
     }
 }
 
-// function that makes a request to the original url of each image which then gives status information and file size
-function populateUnoptimizedSizeModel(url, isServiceWorkerImage, im) {
-    let urlObj = new URL(url)
-    let mode = "cors";
-    let headers = new Headers({
-    });
-    if(!isServiceWorkerImage){
-        mode = "same-origin";
-        headers = new Headers({
-            "cache-control": "no-cache",
-            "accept": "image/webp,image/apng,image/*",
-            "accept-encoding": "gzip, deflate, br",});
-    }
-    let fetch_request = new Request(
-        url,
-        {
-            "headers": headers,
-            "method": "GET",
-            "mode": mode,
-            "cache": "no-store"
-        });
 
-    let prom = fetch(fetch_request);
-
-
-    // notify background.js of the url we want to monitor
-    browser.runtime.sendMessage({
-        command: "imageTransfer",
-        url: url,
-        image: im,
-        kind: "original"
-    }).then(
-        () => {},
-        () => { },
-    );
-
-    // prom.then(
-    //     (response) => {
-    //         if (response.status === 200) {
-    //         }
-    //         else {
-    //             console.error("error");
-    //         }
-    //     }, 
-    //     (response) => {}                                
-    // );
-    
-}
-
-// function to strip HAPs params from search params of url for tranmitting pathnames to popup.js
+// function to strip HAPs params from search params of url for transmitting pathnames to popup.js
 function stripHAPsSearchParam(url){
     return url.replace('?sc-disable-haps=1', '');
 }
@@ -852,35 +456,11 @@ function originalURLOfImage(im) {
 }
 
 // change images to unoptimized versions
-function changeToUnoptimized(isWhitelisted) {
+function changeToUnoptimized() {
     if(hasSentModel){
         canSendModels = false;
         currentView = "unoptimized";
-
-        if(isWhitelisted){
-            whitelistedAddCustomStyles('scbca-original')
-        }else{
-            allAddCustomStyles('scbca-original') 
-        }
-    }
-}
-
-// function for going from a serviceWorker url to an original via looking up it's corresponding domain in serviceWorker config
-function getOriginalFromServiceWorkerUrl(url){
-    let urlObj = new URL(url)
-    var host = urlObj.host;
-    domains = Object.values(serviceWorkerDomains);
-    if (host in domains){
-        const originalDomain = Object.keys(domains).find(key => domains[key] === host);
-        return "https://" + Object.keys(serviceWorkerDomains)[originalDomain] + urlObj.pathname + urlObj.search;
-    }else{
-        for (const domain of domains){
-            if (domain.includes(host) || host.includes(domain)){
-                const originalDomain = Object.keys(domains).find(key => domains[key] === host);
-                return "https://" + Object.keys(serviceWorkerDomains)[originalDomain] + urlObj.pathname + urlObj.search;
-            }
-        }
-        return undefined
+        addCustomStyles('scbca-original')
     }
 }
 
@@ -889,33 +469,34 @@ let shimSelected = "select";
 
 // event listener for on startup as well as when views are changed in popup.js
 browser.runtime.onMessage.addListener(
-    function (request, sender, sendResponse) {
+    function (request) {
+        // view change
         if (request.hasOwnProperty("newShim")) {
             if (request.newShim === "select") {
-                changeToSelected(request.whitelist);
+                changeToSelected();
             } else if (request.newShim === "optimized") {
-                changeToOptimized(request.whitelist);
+                changeToOptimized();
             } else if (request.newShim === "unoptimized") {
-                changeToUnoptimized(request.whitelist);
+                changeToUnoptimized();
             }
             shimSelected = request.newShim;
-            isWhitelisted =  request.whitelist
             return { status: "ok" };
         } else if (request.hasOwnProperty("refreshView") && shimSelected === "select") {
             changeToSelected();
         }
+        // we have received headers for an image
         if(request.hasOwnProperty("headers")){
             let headers = request.headers;
             let im = request.image;
             let url = request.url;
             let kind = request. kind;
             // get image status
-            let headers_status = image_opt_status_from_headers(headers);
+            let headers_status = getImageOptimisationStatus(headers);
             // get image size
-            let indicated_size = size_from_headers(headers);
+            let indicated_size = getSizeFromHeaders(headers);
 
             // get image filetype
-            let filetype = filetype_from_headers(headers);
+            let filetype = getFiletypeFromHeaders(headers);
 
             let data = {
                 "status": headers_status,
@@ -925,18 +506,12 @@ browser.runtime.onMessage.addListener(
             handleImageHeadersCallback(data,url, im, kind);
             return { status: "ok" };
         }
-
+        // all images have been processed so we can now send image payload data to popup
         if(request.hasOwnProperty("notification")){
             // all images have been processed, now set timeout
             if(canSendModels){
                 if(!isChunked){
-
-                    if(isWhitelisted){
-                        window.setTimeout(sendModelSummaries, 5000);
-                    }else{
-                        // window.setTimeout(function(){sendModelSummaries(false)}, 2000); 
-                        window.setTimeout(sendModelSummaries, 2000); 
-                    }
+                    window.setTimeout(sendModelSummaries, 2000);  
                     hasSentModel = true;
                 }else{
                     window.setTimeout(sendModelSummaries, 4000);
@@ -944,17 +519,21 @@ browser.runtime.onMessage.addListener(
                 }
             }   
         }
+        // popup has loaded, thus we need to reset model sending states
         if(request.hasOwnProperty("loaded")){
             // allow sending of models
             hasSentModel = false;
             canSendModels = true;
         }
-
+        
+        // chunked image fetch details have been returned
         if (request.hasOwnProperty("transfer_size")){
             var filetype = request.filetype;
-            var kind = request.type;
+            var kind = request.kind;
             var status = request.status;
-            var pathname = request.pathname;
+            var url = request.url;
+            var urlObj = new URL(url);
+            var transfer_size = request.transfer_size;
             if(filetype.includes("image")){
                 let split_filename_arr = filetype.split('/');
                 filetype = split_filename_arr[1];
@@ -962,66 +541,18 @@ browser.runtime.onMessage.addListener(
                     unoptimizedSizeModel[url] = {
                         'status': status,
                         'transfer_size': transfer_size,
-                        'pathname': pathname,
+                        'pathname': urlObj.pathname,
                         'filetype': filetype};
                 }
                 if (kind == 'optimised'){
                     optimizedSizeModel[url] = {
                         'status': status,
                         'transfer_size': transfer_size,
-                        'pathname': pathname,
+                        'pathname': urlObj.pathname,
                         'filetype': filetype};
                 }
             }
-            return;
+            return { status: "ok" };
         }
 }
 );
-
-// function for checking whether a site is using the serviceWorker or not
-function CheckWorkerProcess () {
-
-    let scripts = this.document.scripts;
-    for (var i = 0; i < scripts.length; i++) {
-        if (scripts[i].src) {
-            if (scripts[i].src.includes("sc-sw-installer")) {
-                return true
-            }
-        }
-    }
-    return false;
-}
-
-// function for getting the supported serviceWorker domains from root/sc-sw.min.js
-function getServiceWorkerDomains(isWhitelisted){
-    let origin = window.location.origin;
-    //get sc script to get serviceWorker domains
-    let fetch_sc_script = new Request(
-        origin + "/sc-sw.min.js",
-        {
-            "method": "GET",
-        });
-        
-    fetch(fetch_sc_script)
-    .then(function(res){
-        if (res.status === 200){
-            return res.text()
-        } else{
-            return undefined;
-        }
-    }).then(function(data){
-        if (data !== undefined){
-            // get string indices for range of switch_domain_for_images object
-            var start = data.search("switch_domains_for_images") + 26;
-            var end =data.search("}") +1; 
-
-            // create substring
-            var serviceWorkerDomainsObjString = data.substring(start, end);
-            // parse as JSON & save in global variable
-            serviceWorkerDomains = JSON.parse(serviceWorkerDomainsObjString);
-            serviceWorker = true;
-        }
-    }).then(function(){
-        displaySelected(isWhitelisted)
-    })
-} 

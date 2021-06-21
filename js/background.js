@@ -3,8 +3,9 @@ let originalImages = {};
 
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+  // perform startup processes
   if (request.command === 'startup'){
-    const CustomANALYZED_DOMAIN = request.hostname; //retrive hostname in request from js/find_domain_name.js
+    const CustomANALYZED_DOMAIN = request.hostname; //retrieve hostname in request from js/find_domain_name.js
     chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
       chrome.declarativeContent.onPageChanged.addRules(
         [{
@@ -20,18 +21,18 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
     sendResponse({ "status": "Welcome to ShimmerCat Image Extension" })
   }
+  // save image details
   if(request.command === 'imageTransfer'){
     if(request.kind === 'original'){
       originalImages[request.url] = request.image;
     }else{
       optimisedImages[request.url]= {
-        "image": request.image,
-        "isServiceWorkerImage": request.isServiceWorker
+        "image": request.image
       }
     }
 
   }
-  // fetch image for sites when whitelist checkbox checked
+  // perform image fetch 
   if(request.command === 'imageFetch'){
     let headers = new Headers({
       "cache-control": "no-cache",
@@ -49,29 +50,27 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
           "cache": "no-store"
       });
   
-  
-  let prom = fetch(fetch_request);
+    let prom = fetch(fetch_request);
 
-  prom.then(
-    (response) => {
-        if (response.status === 200) {
-          if(request.type === 'original'){
-            originalImages[request.url] = request.image;  
-          }else{
-            optimisedImages[request.url]= {
-              "image": request.image,
-              "isServiceWorkerImage": false
-            } 
+    prom.then(
+      (response) => {
+          if (response.status === 200) {
+            if(request.type === 'original'){
+              originalImages[request.url] = request.image;  
+            }else{
+              optimisedImages[request.url]= {
+                "image": request.image
+              } 
+            }
           }
-        }
-        else {
-            console.error("error");
-        }
-    }                                
-  );
+          else {
+              // console.error("error");
+          }
+      }                                
+    ).catch((error) =>{});
   }
 
-  // test
+  // perform a background chunked image fetch
   if(request.command === 'chunkedImageFetch'){
     let headers = new Headers({
       "cache-control": "no-cache",
@@ -93,7 +92,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     fetch(fetch_request)
     .then((async function (response){
           if (response.status === 200) {
+            // compute the complete image size of the chunked image 
             transfer_size = await processChunkedResponse(response).then(onChunkedResponseComplete).catch(onChunkedResponseError);
+            // send back to content script
             browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
@@ -103,34 +104,49 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     status: request.status,
                     pathname: request.pathname,
                     filetype: request.filetype,
-                    kind: request.type
+                    kind: request.kind,
+                    url: request.url
                   })
-                    .then(
-                      () => { console.log("message sent to content script") },
-                      () => { console.error("message was not sent! ") }
+                    .then(() => {
+                        //delete image
+                        if(request.kind == 'original'){
+                          delete originalImages[request.url]
+                          //check if we have processed all images, if we have notify state.js to show model data
+                          if(Object.keys(originalImages).length === 0){
+                            browser.tabs.query({ active: true, currentWindow: true })
+                            .then(
+                              (tabs) => {
+                                browser.tabs.sendMessage(tabs[0].id, { 
+                                  notification: "final image"});
+                              })
+                          }
+                        }else{
+                          delete optimisedImages[request.url]
+                          //check if we have processed all images, if we have notify state.js to show model data
+                          if(Object.keys(optimisedImages).length === 0){
+                            browser.tabs.query({ active: true, currentWindow: true })
+                            .then(
+                              (tabs) => {
+                                browser.tabs.sendMessage(tabs[0].id, { 
+                                  notification: "final image"});
+                              })
+                          }
+                        } 
+                        console.log("message sent to content script") 
+                      }
+                    )
+                    .catch(
+                      (error) => {
+                        console.error("message was not sent for pathname: " ,request.pathname);
+                        console.error(error);
+                     }
                     );
                 }
               })
-              .then(() => {
-              })
-            // transfer_size.then(
-            //   () =>{
-            //   browser.tabs.query({ active: true, currentWindow: true })
-            //   .then(
-            //     (tabs) => {
-            //       if (tabs.length > 0) {
-            //         browser.tabs.sendMessage(tabs[0].id, { transfer_size: transfer_size })
-            //           .then(
-            //             () => { console.log("message sent to content script") },
-            //             () => { console.error("message was not sent! ") }
-            //           );
-            //       }
-            //     })
-            //   .then((response) => {
-            //     console.log(response);
-            //   })
-            // }
-            // );
+            .then(() => {
+            })
+          }else{
+            console.error(error);
           }
         }
     ));
@@ -239,8 +255,8 @@ function forward_mark(mark, maybe_url, info) {
                     );
                 }
               })
-              .then(() => {
-              })
+            .then(() => {
+            });
 
         });
     }
@@ -269,6 +285,7 @@ chrome.webRequest.onErrorOccurred.addListener(function(details){
 
 // listener for getting response headers from image requests
 chrome.webRequest.onCompleted.addListener(function(details){
+  chunked = true;
   // if original image
   if (details.url in originalImages){
     browser.tabs.query({ active: true, currentWindow: true })
@@ -286,82 +303,43 @@ chrome.webRequest.onCompleted.addListener(function(details){
               .then(
                 ()=>{
                 //delete image
-                delete originalImages[details.url];  
+                for (key in Object.keys(details.responseHeaders)){
+                  let header = Object.values(details.responseHeaders[key])[0].toLowerCase(); 
+                  if (header === "content-length"){
+                    chunked = false;
+                  }
+                }
+                if (!chunked){
+                  delete originalImages[details.url];  
+                }
               },
               (error) => {
-                console.error("error sending headers for: ", details.url);
-                console.error(error);
+                // console.error("error sending headers for: ", details.url);
+                // console.error(error);
             })
   }
   // if optimised image
   if (details.url in optimisedImages){
-    // if it is a serviceWorker image
-    if(optimisedImages[details.url]["isServiceWorkerImage"]){
-      if(details.tabId === -1 && details.frameId === -1){
-        let filetype = new_filetype_from_headers(details.responseHeaders);
-        if (!(filetype.includes('image'))){
-          delete optimisedImages[details.url]
-        }else{
-          browser.tabs.query({ active: true, currentWindow: true })
-                  .then(
-                    (tabs) => {
-                      if (tabs.length > 0) {
-                        // send headers to state.js 
-                        return browser.tabs.sendMessage(tabs[0].id, { 
-                          headers: details.responseHeaders,
-                          image : optimisedImages[details.url]["image"],
-                          url : details.url,
-                          kind : "optimised" });
-                      }
-                    })
-                    .then(()=>{
-                      //delete image
-                      delete optimisedImages[details.url]
-                      //check if we have processed all images, if we have notify state.js to show model data
-                      if(Object.keys(optimisedImages).length === 0){
-                        browser.tabs.query({ active: true, currentWindow: true })
-                        .then(
-                          (tabs) => {
-                            browser.tabs.sendMessage(tabs[0].id, { 
-                              notification: "final image"});
-                          })
-                      }
-                    },
-                    (error) => {
-                      console.error("error sending headers")
-                      console.error(error);
-                  })
-        }
-      }else{
-        // filter out non-image requests that slip through (bliz)
-        let filetype = new_filetype_from_headers(details.responseHeaders);
-        if (!(filetype.includes('image'))){
-          delete optimisedImages[details.url]
-          if(Object.keys(optimisedImages).length === 0){
-            browser.tabs.query({ active: true, currentWindow: true })
+    browser.tabs.query({ active: true, currentWindow: true })
             .then(
               (tabs) => {
-                browser.tabs.sendMessage(tabs[0].id, { 
-                  notification: "final image"});
+                if (tabs.length > 0) {
+                  // send headers to state.js 
+                  return browser.tabs.sendMessage(tabs[0].id, { 
+                    headers: details.responseHeaders,
+                    image : optimisedImages[details.url]["image"],
+                    url : details.url,
+                    kind : "optimised" });
+                }
               })
-          }
-        }
-      }
-    } else{
-      // non-serviceworker optimised image
-      browser.tabs.query({ active: true, currentWindow: true })
-              .then(
-                (tabs) => {
-                  if (tabs.length > 0) {
-                    // send headers to state.js 
-                    return browser.tabs.sendMessage(tabs[0].id, { 
-                      headers: details.responseHeaders,
-                      image : optimisedImages[details.url]["image"],
-                      url : details.url,
-                      kind : "optimised" });
+              .then((tabs)=>{
+                for (key in Object.keys(details.responseHeaders)){
+                  let header = Object.values(details.responseHeaders[key])[0].toLowerCase(); 
+                  if (header === "content-length"){
+                    chunked = false;
                   }
-                })
-                .then((tabs)=>{
+                }
+                if (!chunked){
                   //delete image
                   delete optimisedImages[details.url]
                   //check if we have processed all images, if we have notify state.js to show model data
@@ -373,12 +351,12 @@ chrome.webRequest.onCompleted.addListener(function(details){
                         notification: "final image"});
                       })
                   }
-                },
-                (error) => {
-                  // console.error("error sending headers for: ", details.url);
-                  // console.error(error);
-              })
-    }
+                }
+              },
+              (error) => {
+                // console.error("error sending headers for: ", details.url);
+                // console.error(error);
+            })
   }
 },
 {urls: ["<all_urls>"]},
@@ -412,21 +390,6 @@ const CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT = 0.05;
 function onChunkedResponseComplete([result, response]) {
   var transfer_size = Math.round(result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT));
   return transfer_size;
-  // browser.tabs.query({ active: true, currentWindow: true })
-  //   .then(
-  //     (tabs) => {
-  //       if (tabs.length > 0) {
-  //         browser.tabs.sendMessage(tabs[0].id, { transfer_size: transfer_size })
-  //           .then(
-  //             () => { console.log("message sent to content script") },
-  //             () => { console.error("message was not sent! ") }
-  //           );
-  //       }
-  //     })
-  //   .then((response) => {
-  //     console.log(response);
-  //   })
-  // return Math.round(result *(1 + CHUNKED_IMAGE_LOSS_COMPENSATION_PERCENT));
 }
 
 // error handler for chunked image transfer
