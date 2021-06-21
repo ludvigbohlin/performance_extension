@@ -1,4 +1,4 @@
-// default value to be displayed in the popup menu on startup.
+// default values to be displayed in the popup menu on startup.
 let vue_data = {
     "good_images": [],
     "bad_images": [],
@@ -8,7 +8,6 @@ let vue_data = {
     "image_compression": "",
     "total_original": "",
     "Active": true,
-    "ServiceWorker": false,
     "SplashScreen": true,
     "Spinner": false,
     "imagesCount":0,
@@ -16,37 +15,42 @@ let vue_data = {
     "filetypes": [],
     "cors_error": false,
     "cors_error_number": 0,
-    
 };
 
-let startup = true;
+// let startup = true;
+
+// array to hold deleted optimised images in case of corresponding origin image repopulation
+var backupOptimised = {};
 
 // function that adds an event listener to handle data send from state.js and set as vue variables for rendering in popup.html
-browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    // if (sender.tab && sender.tab.active && !request.hasOwnProperty('error')) {
+browser.runtime.onMessage.addListener(function (request, sender) {
+    // if there are no errors with the image payload data
     if (sender.tab && sender.tab.active && !request.hasOwnProperty('error') && !request.hasOwnProperty('command')) {
         setTimeout(function(){
         $('[data-toggle="popover"]').popover({
             html: true,
             trigger: 'hover'
-          })}, 4000);
+        })}, 100);
 
+        // store image payload data in localStorage so it can be used in download.js
         localStorage.setItem('clog', JSON.stringify(request));
         vue_data["imagesCount"]=Object.keys(request.optimized).length;
-        vue_data["ServiceWorker"] = request.serviceWorker;
+        // perform all compression computation for display in popup
         summarizeImagesModel(request);
+
+        // disable spinner
         vue_data["Spinner"] = false;
         
-        // make radiobuttons visible 
+        // make radio buttons visible 
         document.getElementById('radiobutton-area').style.display = 'block';
 
     }
 
-    // if(sender.tab && sender.tab.active && request.hasOwnProperty('error')){
+    // if there is an error with the image payload data
     if(sender.tab && sender.tab.active && request.hasOwnProperty('error') && !request.hasOwnProperty('command')){
         if (request.active === false) {
             vue_data["Active"] = false;
-        } 
+        }
         vue_data["Spinner"] = false;
     }
 });
@@ -74,17 +78,74 @@ function summarizeImagesModel(images_summary_input) {
     // if original, optimised image count is not equal
     if (Object.keys(images_summary_input.optimized).length !== Object.keys(images_summary_input.unoptimized).length && images_summary_input.cors_error == true ){
         vue_data['cors_error'] = true;
+        console.log("optimised length before deletion: ");
+        console.log(Object.keys(images_summary_input.optimized).length);
         
         // get number of serviceworker images that are not in original images but are in optimised
         let cors_error_number = 0;
         for (var key in images_summary_input.optimized){
             var originalKey = Object.keys(images_summary_input.unoptimized).find(searchKey => images_summary_input.unoptimized[searchKey]["pathname"] === images_summary_input.optimized[key]["pathname"]);
             if (originalKey === undefined){
+                var optimisedImage = images_summary_input.optimized[key];
+
+                // add to backup array so we can re-add it later if the origin image is eventually found (if not already there)
+                console.log("deleting optimised image");
+                if (backupOptimised[key] == undefined){
+                    backupOptimised[key]  = optimisedImage;    
+                }
+                // var isInArray = backupOptimised.find(function(el){ return el.pathname === optimisedImage.pathname }) !== undefined;
+                // if (!isInArray) {
+                //     backupOptimised[key]  = optimisedImage;    
+                // }
+                
+                delete images_summary_input.optimized[key];
+                console.log("optimised length after deletion: ");
+                console.log(Object.keys(images_summary_input.optimized).length);
+
+                // increment image count difference
                 cors_error_number +=1; 
             }
         }
+        console.log("backup array: ");
+        console.log(backupOptimised);
+        
+        // check for new origin images that have optimised images in backup array
+        for (var key in backupOptimised){
+            // check if origin has the image pathname
+            var originalKey = Object.keys(images_summary_input.unoptimized).find(searchKey => images_summary_input.unoptimized[searchKey]["pathname"] === backupOptimised[key]["pathname"]);
+            if (originalKey !== undefined){
+
+                console.log("found newly-populated origin image");
+                // re-add to optimised images 
+                images_summary_input.optimized[key] = backupOptimised[key];
+
+                // remove from backup array
+                // var index = backupOptimised.indexOf(i);
+                // if (index > -1) {
+                //     array.splice(index, 1);
+                // }
+                delete backupOptimised[key];
+
+
+                // decrement image count difference
+                cors_error_number -=1
+
+                //  recheck imbalance: if none we remove cors error
+                if (!Object.keys(images_summary_input.optimized).length === Object.keys(images_summary_input.unoptimized).length && images_summary_input.cors_error == true ){
+                    vue_data['cors_error'] = false;
+                }else{
+                    // break;
+                }
+                
+            }
+            
+        }
+        
         vue_data["cors_error_number"] = cors_error_number;
+    }else{
+        vue_data['cors_error'] = false;
     }
+
 
     // calculate total size of all original images found
     let total_unoptimized_size = 0.0;
@@ -106,8 +167,6 @@ function summarizeImagesModel(images_summary_input) {
     }else{
         vue_data["image_compression"] = "0%"; 
     }
-
-    let total_files = Object.keys(images_summary_input.optimized).length;
     let filetypes = [];
     let filetype_data = {
         origin: {},
@@ -166,6 +225,8 @@ function imageCompression(total_optimized, total_original) {
     return result
 
 }
+
+// function that populates the version identifier in popup header
 function myVersion() {
     document.getElementById("version").innerText="v"+ chrome.app.getDetails().version;
 }
@@ -205,7 +266,7 @@ window.vue_body_app = new Vue({
     data: vue_data,
     el: "#app-root",
     methods: {
-        changeShim: function (to_what, isWhitelisted) {
+        changeShim: function (to_what) {
             browser.tabs.query({
                 'active': true,
                 'currentWindow': true
@@ -215,7 +276,6 @@ window.vue_body_app = new Vue({
                         
                         return browser.tabs.sendMessage(tabs[0].id, { 
                             newShim: to_what,
-                            whitelist: isWhitelisted
                         });
                     })
                 .then((response) => {
@@ -231,10 +291,9 @@ window.vue_body_app = new Vue({
         },
         // function to change state of splashscreen
         SplashScreenChange: function () {
-            var isWhitelisted = !document.getElementById('whitelist-checkbox').checked
             vue_data["SplashScreen"] = false;
             vue_data["Spinner"] = true;
-            this.changeShim("select", isWhitelisted);
+            this.changeShim("select");
 
         },
         getOriginFiletype: function(index){
@@ -254,19 +313,20 @@ window.vue_body_app = new Vue({
     },
 
     watch: {
-        shim: function (new_shim, old_shim) {
+        shim: function (new_shim) {
             this.changeShim(new_shim);
         }
     }
 });
 
+// make select view the default on first run
 document.getElementById('submit-btn').addEventListener('click', function(){
-    // tell state.js the state of whitelist checkbox
 
     // force select view
     vue_data["shim"] = "select";
 });
 
+// listener for popup load to notify content script
 window.addEventListener('load', function(){
     // enable sending of models
     browser.tabs.query({

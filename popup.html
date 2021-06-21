@@ -42,17 +42,16 @@
         <header>
             <span class="version" id="version"></span>
             <img alt="logo" class="logo" src="icons/icon_128x128.png">
-            <h1>ShimmerCat Image Extension</h1>
+            <h1>ShimmercatImage Extension</h1>
         </header>
     </div>
     <div id="app-root">
-        <div v-if="!Active && !ServiceWorker&&SplashScreen==false" class="Message">
+        <div v-if="!Active && SplashScreen==false" class="Message">
             <label class="ErrorMessage">
                 This Website is not served by ShimmerCat.
             </label>
         </div>
         <div id="radiobutton-area">
-            <!-- <div id="radiobutton-area" v-if="total_size_optimized !== '' &&Active &&SplashScreen==false"></div> -->
             <p class="p-position">Show</p>
             <div class="r-position t-1">
                 <input class="shim-radio" type="radio" id="optimized" name="shim-type" value="optimized" v-model="shim">
@@ -121,7 +120,7 @@
                     </div>
                 </div>
                 <div class="ImagesCount">
-                    <label><span class="bold">Images Detected:</span> {{imagesCount}}</label>
+                    <label><span class="bold">Images Detected:</span> {{imagesCount}}<span v-if="cors_error">*</span></label>
                 </div>
                 <div class="filetypes-count-div">
                     <table>
@@ -135,11 +134,11 @@
                             </tr>
                     </table>
                     <div v-if="cors_error">
-                        <label>{{cors_error_number}} images served by service worker</label>
+                        <label style="font-size:x-small; margin-top:2%;">* Origin Connectivity Information.</label>
                         <button id="cors-popover" class="tooltip-btn" data-html="true" data-toggle="popover" data-placement="left" 
-                        data-content="<div id='cors' class='text-ul-li  popover-div'>
-                            If the total number of images differ between the origin and the optimised ones, this is due to a CORS issue as there is no 'Access-Control-Allow-Origin' header present on the original image resource.
-                        </div>">
+                        data-content=
+                            "<div id='cors' class='text-ul-li  popover-div'>There are missing origin images due to image origin connectivity issues. Please try again later. </div>"
+                            >
                         <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-info-circle" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                             <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
                             <path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588z"/>
@@ -165,10 +164,6 @@
             </p>
             <div>
                 <a id=submit-btn href="#" v-on:click="SplashScreenChange" class="btn">Find optimized images</a>
-            </div>
-            <div class="m-25 whitelist-checkbox">
-                <input type="checkbox" id="whitelist-checkbox" name="whitelist-checkbox" value="whitelist">
-                <label for="whitelist-checkbox">Serve images from external domains</label><br>
             </div>
         </div>
     </div>
