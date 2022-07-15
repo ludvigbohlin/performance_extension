@@ -1,6 +1,6 @@
 {
    "name": "ShimmerCat Image Extension",
-   "version": "1.4",
+   "version": "1.5",
    "description": "In-page statistics about image optimization",
    "manifest_version": 2,
 
@@ -9,7 +9,6 @@
       "declarativeContent",
       "activeTab",
       "contextMenus",
-      "downloads",
       "webRequest",
       "<all_urls>"
     ],
